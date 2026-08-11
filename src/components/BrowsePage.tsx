@@ -18,7 +18,7 @@ export const validateBrowseSearch = (s: Record<string, unknown>): BrowseSearch =
   for (const k of ["genre", "country", "year", "rating", "sort"] as const) {
     if (s[k]) out[k] = String(s[k]);
   }
-  if (s.page) out.page = Number(s.page) || 1;
+  if (s["page"]) out.page = Number(s["page"]) || 1;
   return out;
 };
 
@@ -31,8 +31,8 @@ export function BrowsePage({ type, search }: { type: "movie" | "tv"; search: Bro
   const title = isTv ? t("tv") : t("movies");
 
   const q: Record<string, string | number | boolean> = { sort_by: sort, page, include_adult: false };
-  if (search.genre) q.with_genres = search.genre;
-  if (search.country) q.with_origin_country = search.country.toUpperCase();
+  if (search.genre) q["with_genres"] = search.genre;
+  if (search.country) q["with_origin_country"] = search.country.toUpperCase();
   if (search.rating) {
     q["vote_average.gte"] = search.rating;
     q["vote_count.gte"] = 50;
@@ -55,7 +55,7 @@ export function BrowsePage({ type, search }: { type: "movie" | "tv"; search: Bro
     options: { v: string | number; l: string | number }[],
     label: string,
   ) => (
-    <select value={cur} onChange={(ev) => go({ [name]: ev.target.value, page: undefined } as BrowseSearch)}>
+    <select value={cur} onChange={(ev) => go({ [name]: ev.target.value, page: 1 } as unknown as BrowseSearch)}>
       <option value="">{label}</option>
       {options.map((o) => (
         <option value={o.v} key={o.v}>

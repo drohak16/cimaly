@@ -4,7 +4,7 @@ import { useLang } from "@/lib/i18n";
 import { useTmdb } from "@/lib/tmdb";
 
 export const Route = createFileRoute("/search")({
-  validateSearch: (s: Record<string, unknown>) => ({ q: s.q ? String(s.q) : "" }),
+  validateSearch: (s: Record<string, unknown>) => ({ q: s["q"] ? String(s["q"]) : "" }),
   head: () => ({
     meta: [
       { title: "Search — Cimaly" },

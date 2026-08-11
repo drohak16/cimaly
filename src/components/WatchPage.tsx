@@ -12,6 +12,7 @@ const SERVERS = [
     movie: (id: string) => `https://vaplayer.ru/embed/movie/${id}`,
     tv: (id: string, s: number, e: number) => `https://vaplayer.ru/embed/tv/${id}/${s}/${e}`,
   },
+];
 
 export function WatchPage({
   type,

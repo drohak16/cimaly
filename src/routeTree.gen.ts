@@ -10,33 +10,167 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as MoviesRouteImport } from './routes/movies'
+import { Route as MylistRouteImport } from './routes/mylist'
+import { Route as SearchRouteImport } from './routes/search'
+import { Route as CountryCodeRouteImport } from './routes/country.$code'
+import { Route as GenreSlugRouteImport } from './routes/genre.$slug'
+import { Route as MovieIdRouteImport } from './routes/movie.$id'
+import { Route as TvIndexRouteImport } from './routes/tv.index'
+import { Route as TvIdRouteImport } from './routes/tv.$id'
+import { Route as WatchMovieIdRouteImport } from './routes/watch.movie.$id'
+import { Route as WatchTvIdSeasonEpisodeRouteImport } from './routes/watch.tv.$id.$season.$episode'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MoviesRoute = MoviesRouteImport.update({
+  id: '/movies',
+  path: '/movies',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MylistRoute = MylistRouteImport.update({
+  id: '/mylist',
+  path: '/mylist',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SearchRoute = SearchRouteImport.update({
+  id: '/search',
+  path: '/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CountryCodeRoute = CountryCodeRouteImport.update({
+  id: '/country/$code',
+  path: '/country/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GenreSlugRoute = GenreSlugRouteImport.update({
+  id: '/genre/$slug',
+  path: '/genre/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MovieIdRoute = MovieIdRouteImport.update({
+  id: '/movie/$id',
+  path: '/movie/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TvIndexRoute = TvIndexRouteImport.update({
+  id: '/tv/',
+  path: '/tv/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TvIdRoute = TvIdRouteImport.update({
+  id: '/tv/$id',
+  path: '/tv/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WatchMovieIdRoute = WatchMovieIdRouteImport.update({
+  id: '/watch/movie/$id',
+  path: '/watch/movie/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WatchTvIdSeasonEpisodeRoute = WatchTvIdSeasonEpisodeRouteImport.update({
+  id: '/watch/tv/$id/$season/$episode',
+  path: '/watch/tv/$id/$season/$episode',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/movies': typeof MoviesRoute
+  '/mylist': typeof MylistRoute
+  '/search': typeof SearchRoute
+  '/country/$code': typeof CountryCodeRoute
+  '/genre/$slug': typeof GenreSlugRoute
+  '/movie/$id': typeof MovieIdRoute
+  '/tv/$id': typeof TvIdRoute
+  '/tv/': typeof TvIndexRoute
+  '/watch/movie/$id': typeof WatchMovieIdRoute
+  '/watch/tv/$id/$season/$episode': typeof WatchTvIdSeasonEpisodeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/movies': typeof MoviesRoute
+  '/mylist': typeof MylistRoute
+  '/search': typeof SearchRoute
+  '/country/$code': typeof CountryCodeRoute
+  '/genre/$slug': typeof GenreSlugRoute
+  '/movie/$id': typeof MovieIdRoute
+  '/tv/$id': typeof TvIdRoute
+  '/tv': typeof TvIndexRoute
+  '/watch/movie/$id': typeof WatchMovieIdRoute
+  '/watch/tv/$id/$season/$episode': typeof WatchTvIdSeasonEpisodeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/movies': typeof MoviesRoute
+  '/mylist': typeof MylistRoute
+  '/search': typeof SearchRoute
+  '/country/$code': typeof CountryCodeRoute
+  '/genre/$slug': typeof GenreSlugRoute
+  '/movie/$id': typeof MovieIdRoute
+  '/tv/$id': typeof TvIdRoute
+  '/tv/': typeof TvIndexRoute
+  '/watch/movie/$id': typeof WatchMovieIdRoute
+  '/watch/tv/$id/$season/$episode': typeof WatchTvIdSeasonEpisodeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/movies'
+    | '/mylist'
+    | '/search'
+    | '/country/$code'
+    | '/genre/$slug'
+    | '/movie/$id'
+    | '/tv/$id'
+    | '/tv/'
+    | '/watch/movie/$id'
+    | '/watch/tv/$id/$season/$episode'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/movies'
+    | '/mylist'
+    | '/search'
+    | '/country/$code'
+    | '/genre/$slug'
+    | '/movie/$id'
+    | '/tv/$id'
+    | '/tv'
+    | '/watch/movie/$id'
+    | '/watch/tv/$id/$season/$episode'
+  id:
+    | '__root__'
+    | '/'
+    | '/movies'
+    | '/mylist'
+    | '/search'
+    | '/country/$code'
+    | '/genre/$slug'
+    | '/movie/$id'
+    | '/tv/$id'
+    | '/tv/'
+    | '/watch/movie/$id'
+    | '/watch/tv/$id/$season/$episode'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  MoviesRoute: typeof MoviesRoute
+  MylistRoute: typeof MylistRoute
+  SearchRoute: typeof SearchRoute
+  CountryCodeRoute: typeof CountryCodeRoute
+  GenreSlugRoute: typeof GenreSlugRoute
+  MovieIdRoute: typeof MovieIdRoute
+  TvIdRoute: typeof TvIdRoute
+  TvIndexRoute: typeof TvIndexRoute
+  WatchMovieIdRoute: typeof WatchMovieIdRoute
+  WatchTvIdSeasonEpisodeRoute: typeof WatchTvIdSeasonEpisodeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,22 +182,92 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/movies': {
+      id: '/movies'
+      path: '/movies'
+      fullPath: '/movies'
+      preLoaderRoute: typeof MoviesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mylist': {
+      id: '/mylist'
+      path: '/mylist'
+      fullPath: '/mylist'
+      preLoaderRoute: typeof MylistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/search': {
+      id: '/search'
+      path: '/search'
+      fullPath: '/search'
+      preLoaderRoute: typeof SearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/country/$code': {
+      id: '/country/$code'
+      path: '/country/$code'
+      fullPath: '/country/$code'
+      preLoaderRoute: typeof CountryCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/genre/$slug': {
+      id: '/genre/$slug'
+      path: '/genre/$slug'
+      fullPath: '/genre/$slug'
+      preLoaderRoute: typeof GenreSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/movie/$id': {
+      id: '/movie/$id'
+      path: '/movie/$id'
+      fullPath: '/movie/$id'
+      preLoaderRoute: typeof MovieIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tv/': {
+      id: '/tv/'
+      path: '/tv'
+      fullPath: '/tv/'
+      preLoaderRoute: typeof TvIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tv/$id': {
+      id: '/tv/$id'
+      path: '/tv/$id'
+      fullPath: '/tv/$id'
+      preLoaderRoute: typeof TvIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/watch/movie/$id': {
+      id: '/watch/movie/$id'
+      path: '/watch/movie/$id'
+      fullPath: '/watch/movie/$id'
+      preLoaderRoute: typeof WatchMovieIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/watch/tv/$id/$season/$episode': {
+      id: '/watch/tv/$id/$season/$episode'
+      path: '/watch/tv/$id/$season/$episode'
+      fullPath: '/watch/tv/$id/$season/$episode'
+      preLoaderRoute: typeof WatchTvIdSeasonEpisodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  MoviesRoute: MoviesRoute,
+  MylistRoute: MylistRoute,
+  SearchRoute: SearchRoute,
+  CountryCodeRoute: CountryCodeRoute,
+  GenreSlugRoute: GenreSlugRoute,
+  MovieIdRoute: MovieIdRoute,
+  TvIdRoute: TvIdRoute,
+  TvIndexRoute: TvIndexRoute,
+  WatchMovieIdRoute: WatchMovieIdRoute,
+  WatchTvIdSeasonEpisodeRoute: WatchTvIdSeasonEpisodeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

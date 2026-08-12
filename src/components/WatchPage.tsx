@@ -17,11 +17,6 @@ const SERVERS = [
     movie: (imdbId, tmdbId) => `https://vidsrcme.ru/embed/movie/${imdbId || tmdbId}`,
     tv: (tmdbId, s, e) => `https://vidsrcme.ru/embed/tv/${tmdbId}/${s}/${e}`,
   },
-  {
-  name: 'Server 3',
-  movie: (imdbId, tmdbId) => `https://anaplayer.online/embed/movie/${imdbId || tmdbId}`,
-  tv: (tmdbId, s, e) => `https://anaplayer.online/embed/tv/${tmdbId}/${s}/${e}`,
-  },
 ];
 
 export function WatchPage({

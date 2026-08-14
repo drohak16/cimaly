@@ -5,14 +5,37 @@ import { cname, useLang } from "@/lib/i18n";
 import { useTmdb } from "@/lib/tmdb";
 
 export const Route = createFileRoute("/country/$code")({
-  head: () => ({
+  head: ({ params }) => {
+  const country = COUNTRIES.find((x) => x.c === params.code);
+  const countryName = country ? cname(country, "en") : params.code.toUpperCase();
+
+  return {
     meta: [
-      { title: "Country — Cimaly" },
-      { name: "description", content: "Discover movies and TV shows by country of origin on Cimaly." },
-      { property: "og:title", content: "Country — Cimaly" },
-      { property: "og:description", content: "Discover movies and TV shows by country of origin." },
+      {
+        title: `${countryName} Movies & TV Shows — Cimaly`,
+      },
+      {
+        name: "description",
+        content: `Discover movies and TV shows from ${countryName} on Cimaly. Browse popular, trending and recent titles.`,
+      },
+      {
+        property: "og:title",
+        content: `${countryName} Movies & TV Shows — Cimaly`,
+      },
+      {
+        property: "og:description",
+        content: `Discover movies and TV shows from ${countryName} on Cimaly.`,
+      },
     ],
-  }),
+
+    links: [
+      {
+        rel: "canonical",
+        href: `https://cimaly.cc/country/${params.code}`,
+      },
+    ],
+  };
+},
   component: CountryPage,
 });
 

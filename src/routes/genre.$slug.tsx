@@ -5,16 +5,39 @@ import { gname, useLang } from "@/lib/i18n";
 import { useTmdb } from "@/lib/tmdb";
 
 export const Route = createFileRoute("/genre/$slug")({
-  head: () => ({
+head: ({ params }) => {
+  const genreName = params.slug
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+
+  return {
     meta: [
-      { title: "Genre — Cimaly" },
-      { name: "description", content: "Explore popular movies and TV shows by genre on Cimaly." },
-      { property: "og:title", content: "Genre — Cimaly" },
-      { property: "og:description", content: "Explore popular movies and TV shows by genre." },
+      {
+        title: `${genreName} Movies & TV Shows — Cimaly`,
+      },
+      {
+        name: "description",
+        content: `Explore ${genreName} movies and TV shows on Cimaly. Discover popular and trending titles from around the world.`,
+      },
+      {
+        property: "og:title",
+        content: `${genreName} Movies & TV Shows — Cimaly`,
+      },
+      {
+        property: "og:description",
+        content: `Explore ${genreName} movies and TV shows on Cimaly.`,
+      },
     ],
-  }),
-  component: GenrePage,
-});
+
+    links: [
+      {
+        rel: "canonical",
+        href: `https://cimaly.cc/genre/${params.slug}`,
+      },
+    ],
+  };
+},  
 
 function GenrePage() {
   const { slug } = Route.useParams();

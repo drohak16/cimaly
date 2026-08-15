@@ -46,7 +46,7 @@ export const Route = createFileRoute("/sitemap-movies.xml")({
         }
 
         const urls = Array.from(movieIds).map(
-          (id) => `${BASE_URL}/movie/${id}`,
+          (id) => `${BASE_URL}/watch/movie/${id}`,
         );
 
         const xml = `<?xml version="1.0" encoding="UTF-8"?>

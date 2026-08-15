@@ -6,24 +6,24 @@ export const Route = createFileRoute("/sitemap.xml")({
   server: {
     handlers: {
       GET: async () => {
-        const urls = [
-          `${BASE_URL}/`,
-          `${BASE_URL}/movies`,
-          `${BASE_URL}/tv`,
+        const sitemaps = [
+          `${BASE_URL}/sitemap-pages.xml`,
+          `${BASE_URL}/sitemap-movies.xml`,
         ];
 
         const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${urls
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${sitemaps
   .map(
-    (url) => `  <url>
+    (url) => `  <sitemap>
     <loc>${url}</loc>
-  </url>`,
+  </sitemap>`,
   )
   .join("\n")}
-</urlset>`;
+</sitemapindex>`;
 
         return new Response(xml, {
+          status: 200,
           headers: {
             "Content-Type": "application/xml; charset=UTF-8",
             "Cache-Control": "public, max-age=3600",

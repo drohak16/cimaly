@@ -38,7 +38,8 @@ head: ({ params }) => {
     ],
   };
 },  
-
+  component: GenrePage,
+});
 function GenrePage() {
   const { slug } = Route.useParams();
   const { t, lang } = useLang();

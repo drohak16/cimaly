@@ -9,6 +9,7 @@ export const Route = createFileRoute("/sitemap.xml")({
         const sitemaps = [
           `${BASE_URL}/sitemap-pages.xml`,
           `${BASE_URL}/sitemap-movies.xml`,
+          `${BASE_URL}/sitemap-tv.xml`,
         ];
 
         const xml = `<?xml version="1.0" encoding="UTF-8"?>

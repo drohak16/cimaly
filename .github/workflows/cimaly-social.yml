@@ -3,6 +3,9 @@ name: Cimaly Social Dry Run
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   test-social:
     runs-on: ubuntu-latest
@@ -22,3 +25,11 @@ jobs:
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
           BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
         run: node scripts/cimaly-social.js
+
+      - name: Save social history
+        run: |
+          git config user.name "cimaly-social-bot"
+          git config user.email "actions@github.com"
+          git add data/social-history.json
+          git diff --cached --quiet || git commit -m "Update social posting history"
+          git push

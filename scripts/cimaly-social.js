@@ -9,11 +9,21 @@ const headers = {
   accept: "application/json",
 };
 
+const TODAY = new Date();
+const TODAY_STR = TODAY.toISOString().slice(0, 10);
+const MIN_DATE = "2025-01-01";
+
+function daysAgo(days) {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return d.toISOString().slice(0, 10);
+}
+
 async function tmdb(path, params = {}) {
   const url = new URL(`https://api.themoviedb.org/3${path}`);
 
   Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== null) {
+    if (value !== undefined && value !== null && value !== "") {
       url.searchParams.set(key, value);
     }
   });
@@ -27,66 +37,136 @@ async function tmdb(path, params = {}) {
   return response.json();
 }
 
-function choose(results = []) {
-  const usable = results.filter(
-    (item) =>
-      item.poster_path &&
-      (item.title || item.name) &&
-      (item.overview || "").trim().length > 30
-  );
+function getDateValue(item) {
+  return item.release_date || item.first_air_date || "";
+}
 
-  if (!usable.length) {
-    throw new Error("No usable TMDB result found");
+function yearIsRecent(item) {
+  const date = getDateValue(item);
+  return date >= MIN_DATE && date <= TODAY_STR;
+}
+
+function hasPoster(item) {
+  return !!item.poster_path;
+}
+
+function hasTitle(item) {
+  return !!(item.title || item.name);
+}
+
+function hasEnoughVotes(item) {
+  return (item.vote_count || 0) >= 15;
+}
+
+function validOverview(item) {
+  return (item.overview || "").trim().length > 20;
+}
+
+function scoreItem(item) {
+  return (
+    (item.popularity || 0) * 2 +
+    (item.vote_average || 0) * 10 +
+    Math.min(item.vote_count || 0, 500)
+  );
+}
+
+function sortByScore(results) {
+  return [...results].sort((a, b) => scoreItem(b) - scoreItem(a));
+}
+
+function pickFromTop(results, top = 5) {
+  if (!results.length) {
+    throw new Error("No valid TMDB results found");
   }
 
-  return usable[Math.floor(Math.random() * Math.min(usable.length, 10))];
+  const ranked = sortByScore(results).slice(0, top);
+  return ranked[Math.floor(Math.random() * ranked.length)];
 }
 
 async function localizedDetails(type, id, language) {
   return tmdb(`/${type}/${id}`, { language });
 }
 
-async function getMovie() {
-  const today = new Date().toISOString().slice(0, 10);
+async function getTrendingMovies() {
+  const trending = await tmdb("/trending/movie/week", { language: "en-US" });
 
-  const data = await tmdb("/discover/movie", {
-    language: "en-US",
-    sort_by: "popularity.desc",
-    "primary_release_date.lte": today,
-    "primary_release_date.gte": "2026-01-01",
-    "vote_count.gte": "20",
-    include_adult: "false",
-    page: "1",
-  });
+  const filtered = trending.results.filter(
+    (item) =>
+      hasPoster(item) &&
+      hasTitle(item) &&
+      hasEnoughVotes(item) &&
+      yearIsRecent(item) &&
+      validOverview(item)
+  );
 
-  return choose(data.results);
+  return pickFromTop(filtered, 7);
 }
 
-async function getSeries() {
-  const data = await tmdb("/discover/tv", {
-    language: "en-US",
-    sort_by: "popularity.desc",
-    "first_air_date.gte": "2025-01-01",
-    "vote_count.gte": "20",
-    include_null_first_air_dates: "false",
-    page: "1",
-  });
+async function getTrendingSeries() {
+  const trending = await tmdb("/trending/tv/week", { language: "en-US" });
 
-  return choose(data.results);
+  const filtered = trending.results.filter(
+    (item) =>
+      hasPoster(item) &&
+      hasTitle(item) &&
+      hasEnoughVotes(item) &&
+      yearIsRecent(item) &&
+      validOverview(item)
+  );
+
+  return pickFromTop(filtered, 7);
 }
 
-async function getAnime() {
-  const data = await tmdb("/discover/tv", {
+async function getTrendingAnime() {
+  // On cible anime japonais récents, populaires, et avec diffusion récente
+  const primary = await tmdb("/discover/tv", {
     language: "en-US",
     sort_by: "popularity.desc",
     with_genres: "16",
     with_origin_country: "JP",
     with_original_language: "ja",
-    "first_air_date.gte": "2024-01-01",
+    "first_air_date.gte": MIN_DATE,
+    "first_air_date.lte": TODAY_STR,
+    "air_date.gte": daysAgo(30),
+    "air_date.lte": TODAY_STR,
+    "vote_count.gte": "10",
+    include_null_first_air_dates: "false",
     page: "1",
   });
 
-  return choose(data.results);
+  let filtered = primary.results.filter(
+    (item) =>
+      hasPoster(item) &&
+      hasTitle(item) &&
+      yearIsRecent(item) &&
+      validOverview(item)
+  );
+
+  if (!filtered.length) {
+    // fallback un peu plus large si peu de résultats
+    const fallback = await tmdb("/discover/tv", {
+      language: "en-US",
+      sort_by: "popularity.desc",
+      with_genres: "16",
+      with_origin_country: "JP",
+      with_original_language: "ja",
+      "first_air_date.gte": MIN_DATE,
+      "first_air_date.lte": TODAY_STR,
+      "vote_count.gte": "10",
+      include_null_first_air_dates: "false",
+      page: "1",
+    });
+
+    filtered = fallback.results.filter(
+      (item) =>
+        hasPoster(item) &&
+        hasTitle(item) &&
+        yearIsRecent(item) &&
+        validOverview(item)
+    );
+  }
+
+  return pickFromTop(filtered, 7);
 }
 
 async function buildPost(type, item) {
@@ -99,24 +179,32 @@ async function buildPost(type, item) {
   return {
     tmdb_id: item.id,
     type,
+    year_date: getDateValue(item),
+    popularity: item.popularity || 0,
+    vote_average: item.vote_average || 0,
+    vote_count: item.vote_count || 0,
     title_en: titleEN,
     title_ar: titleAR,
     overview_en: en.overview || "",
     overview_ar: ar.overview || "",
     poster_original: `https://image.tmdb.org/t/p/original${item.poster_path}`,
     poster_w780: `https://image.tmdb.org/t/p/w780${item.poster_path}`,
-    cimaly_url: "https://cimaly.cc",
+    cimaly_url:
+      type === "movie"
+        ? `https://cimaly.cc/movie/${item.id}`
+        : `https://cimaly.cc/tv/${item.id}`,
   };
 }
 
 async function main() {
   console.log("🎬 Cimaly social automation — DRY RUN");
+  console.log("Trending + recent content only (2025–2026).");
   console.log("Nothing will be published.\n");
 
   const [series, anime, movie] = await Promise.all([
-    getSeries(),
-    getAnime(),
-    getMovie(),
+    getTrendingSeries(),
+    getTrendingAnime(),
+    getTrendingMovies(),
   ]);
 
   const output = {

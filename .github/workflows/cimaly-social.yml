@@ -19,6 +19,11 @@ jobs:
         with:
           node-version: "20"
 
+      - name: Test Buffer connection
+        env:
+          BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
+        run: node scripts/buffer-test.js
+
       - name: Run Cimaly social test
         env:
           TMDB_READ_TOKEN: ${{ secrets.TMDB_READ_TOKEN }}
@@ -31,5 +36,4 @@ jobs:
           git config user.name "cimaly-social-bot"
           git config user.email "actions@github.com"
           git add data/social-history.json
-          git diff --cached --quiet || git commit -m "Update social posting history"
-          git push
+         

@@ -1,5 +1,23 @@
 {
-  "movies": [],
-  "series": [],
-  "anime": []
+  "movies": [
+    {
+      "tmdb_id": 969681,
+      "title": "Spider-Man: Brand New Day",
+      "date": "2026-08-18"
+    }
+  ],
+  "series": [
+    {
+      "tmdb_id": 278624,
+      "title": "Lucky",
+      "date": "2026-08-18"
+    }
+  ],
+  "anime": [
+    {
+      "tmdb_id": 312949,
+      "title": "Chainsmoker Cat",
+      "date": "2026-08-18"
+    }
+  ]
 }

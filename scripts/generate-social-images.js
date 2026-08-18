@@ -2,17 +2,42 @@ import fs from "node:fs";
 import path from "node:path";
 import sharp from "sharp";
 
-const SELECTION_FILE = path.resolve(
-  "data/last-social-selection.json"
-);
+const TMDB_TOKEN = process.env.TMDB_READ_TOKEN;
 
-const OUTPUT_ROOT = path.resolve("public/social");
+if (!TMDB_TOKEN) {
+  throw new Error("TMDB_READ_TOKEN is missing");
+}
+
+const SELECTION_FILE =
+  path.resolve("data/last-social-selection.json");
+
+const OUTPUT_ROOT =
+  path.resolve("public/social");
 
 const WIDTH = 1080;
 const HEIGHT = 1350;
 
+const headers = {
+  Authorization: `Bearer ${TMDB_TOKEN}`,
+  accept: "application/json"
+};
+
+/* =========================
+   BASIC UTILS
+========================= */
+
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function sanitizeFilename(text = "") {
+  return String(text)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
 }
 
 function escapeXml(text = "") {
@@ -23,12 +48,32 @@ function escapeXml(text = "") {
     .replaceAll('"', "&quot;");
 }
 
-function sanitizeFilename(text = "") {
-  return String(text)
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 60);
+async function tmdb(pathname, params = {}) {
+  const url =
+    new URL(
+      `https://api.themoviedb.org/3${pathname}`
+    );
+
+  for (const [key, value] of Object.entries(params)) {
+    if (
+      value !== undefined &&
+      value !== null &&
+      value !== ""
+    ) {
+      url.searchParams.set(key, value);
+    }
+  }
+
+  const response =
+    await fetch(url, { headers });
+
+  if (!response.ok) {
+    throw new Error(
+      `TMDB ${response.status} ${pathname}`
+    );
+  }
+
+  return response.json();
 }
 
 async function downloadImage(url) {
@@ -36,7 +81,7 @@ async function downloadImage(url) {
 
   if (!response.ok) {
     throw new Error(
-      `Could not download poster: ${response.status}`
+      `Poster download failed: ${response.status}`
     );
   }
 
@@ -45,371 +90,381 @@ async function downloadImage(url) {
   );
 }
 
-function englishOverlay(title, category) {
-  const safeTitle = escapeXml(title);
-  const safeCategory = escapeXml(category.toUpperCase());
+/* =========================
+   POSTER SELECTION
+========================= */
 
-  return `
-  <svg width="${WIDTH}" height="${HEIGHT}">
-    <defs>
-      <linearGradient id="bottom" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="black" stop-opacity="0"/>
-        <stop offset="55%" stop-color="black" stop-opacity="0.15"/>
-        <stop offset="100%" stop-color="black" stop-opacity="0.92"/>
-      </linearGradient>
-    </defs>
-
-    <rect
-      x="0"
-      y="0"
-      width="${WIDTH}"
-      height="${HEIGHT}"
-      fill="url(#bottom)"
-    />
-
-    <circle
-      cx="82"
-      cy="82"
-      r="43"
-      fill="#050505"
-      fill-opacity="0.78"
-    />
-
-    <text
-      x="82"
-      y="101"
-      text-anchor="middle"
-      font-family="Arial, Helvetica, sans-serif"
-      font-size="55"
-      font-weight="900"
-      fill="#e50914"
-    >C</text>
-
-    <text
-      x="62"
-      y="1050"
-      font-family="Arial, Helvetica, sans-serif"
-      font-size="28"
-      font-weight="700"
-      letter-spacing="5"
-      fill="#ffffff"
-    >${safeCategory}</text>
-
-    <text
-      x="62"
-      y="1125"
-      font-family="Arial, Helvetica, sans-serif"
-      font-size="54"
-      font-weight="800"
-      fill="#ffffff"
-    >${safeTitle}</text>
-
-    <rect
-      x="62"
-      y="1185"
-      width="235"
-      height="62"
-      rx="31"
-      fill="#e50914"
-    />
-
-    <text
-      x="179"
-      y="1227"
-      text-anchor="middle"
-      font-family="Arial, Helvetica, sans-serif"
-      font-size="25"
-      font-weight="800"
-      fill="white"
-    >WATCH NOW</text>
-
-    <text
-      x="62"
-      y="1300"
-      font-family="Arial, Helvetica, sans-serif"
-      font-size="26"
-      font-weight="600"
-      letter-spacing="3"
-      fill="white"
-    >CIMALY.CC</text>
-  </svg>`;
-}
-
-function arabicOverlay(title, category) {
-  const safeTitle = escapeXml(
-    title || "شاهد الآن على Cimaly"
+function posterScore(poster) {
+  return (
+    Number(poster.vote_average || 0) * 100 +
+    Number(poster.vote_count || 0) * 10 +
+    Number(poster.width || 0) / 100
   );
-
-  const safeCategory = escapeXml(category);
-
-  return `
-  <svg width="${WIDTH}" height="${HEIGHT}">
-    <defs>
-      <linearGradient id="bottom" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="black" stop-opacity="0"/>
-        <stop offset="55%" stop-color="black" stop-opacity="0.15"/>
-        <stop offset="100%" stop-color="black" stop-opacity="0.92"/>
-      </linearGradient>
-    </defs>
-
-    <rect
-      x="0"
-      y="0"
-      width="${WIDTH}"
-      height="${HEIGHT}"
-      fill="url(#bottom)"
-    />
-
-    <circle
-      cx="82"
-      cy="82"
-      r="43"
-      fill="#050505"
-      fill-opacity="0.78"
-    />
-
-    <text
-      x="82"
-      y="101"
-      text-anchor="middle"
-      font-family="Arial, Helvetica, sans-serif"
-      font-size="55"
-      font-weight="900"
-      fill="#e50914"
-    >C</text>
-
-    <text
-      x="1018"
-      y="1050"
-      text-anchor="end"
-      direction="rtl"
-      font-family="DejaVu Sans, Arial, sans-serif"
-      font-size="29"
-      font-weight="700"
-      fill="#ffffff"
-    >${safeCategory}</text>
-
-    <text
-      x="1018"
-      y="1125"
-      text-anchor="end"
-      direction="rtl"
-      font-family="DejaVu Sans, Arial, sans-serif"
-      font-size="52"
-      font-weight="800"
-      fill="#ffffff"
-    >${safeTitle}</text>
-
-    <rect
-      x="783"
-      y="1185"
-      width="235"
-      height="62"
-      rx="31"
-      fill="#e50914"
-    />
-
-    <text
-      x="900"
-      y="1227"
-      text-anchor="middle"
-      direction="rtl"
-      font-family="DejaVu Sans, Arial, sans-serif"
-      font-size="25"
-      font-weight="800"
-      fill="white"
-    >شاهد الآن</text>
-
-    <text
-      x="1018"
-      y="1300"
-      text-anchor="end"
-      font-family="Arial, Helvetica, sans-serif"
-      font-size="26"
-      font-weight="600"
-      letter-spacing="3"
-      fill="white"
-    >CIMALY.CC</text>
-  </svg>`;
 }
 
-function getCategory(slot, arabic = false) {
-  if (slot === "morning_series") {
-    return arabic ? "مسلسل" : "SERIES";
-  }
-
-  if (slot === "afternoon_anime") {
-    return arabic ? "أنمي" : "ANIME";
-  }
-
-  return arabic ? "فيلم" : "MOVIE";
-}
-
-async function createImage({
-  posterBuffer,
-  overlay,
-  output
-}) {
-  await sharp(posterBuffer)
-    .resize(WIDTH, HEIGHT, {
-      fit: "cover",
-      position: "centre"
-    })
-    .composite([
-      {
-        input: Buffer.from(overlay),
-        top: 0,
-        left: 0
-      }
-    ])
-    .jpeg({
-      quality: 92,
-      chromaSubsampling: "4:4:4"
-    })
-    .toFile(output);
-}
-
-async function generateForContent(slot, content, dir) {
-  console.log(
-    `🎨 Generating ${slot}: ${content.title_en}`
-  );
-
-  const poster =
-    await downloadImage(
-      content.poster_original ||
-      content.poster_w780
+function bestPoster(posters = [], language) {
+  const matches =
+    posters.filter(
+      poster =>
+        poster.iso_639_1 === language
     );
 
-  const slug =
-    sanitizeFilename(content.title_en) ||
-    String(content.tmdb_id);
+  if (!matches.length) {
+    return null;
+  }
 
-  const enFilename =
-    `${slot}-${slug}-en.jpg`;
+  return [...matches].sort(
+    (a, b) =>
+      posterScore(b) -
+      posterScore(a)
+  )[0];
+}
 
-  const arFilename =
-    `${slot}-${slug}-ar.jpg`;
+function bestNeutralPoster(posters = []) {
+  const neutral =
+    posters.filter(
+      poster =>
+        poster.iso_639_1 === null
+    );
+
+  if (!neutral.length) {
+    return null;
+  }
+
+  return [...neutral].sort(
+    (a, b) =>
+      posterScore(b) -
+      posterScore(a)
+  )[0];
+}
+
+function bestAnyPoster(posters = []) {
+  if (!posters.length) {
+    return null;
+  }
+
+  return [...posters].sort(
+    (a, b) =>
+      posterScore(b) -
+      posterScore(a)
+  )[0];
+}
+
+function imageUrl(filePath) {
+  return filePath
+    ? `https://image.tmdb.org/t/p/original${filePath}`
+    : "";
+}
+
+async function getOfficialPosters(content) {
+  const endpoint =
+    content.type === "movie"
+      ? `/movie/${content.tmdb_id}/images`
+      : `/tv/${content.tmdb_id}/images`;
+
+  /*
+    TMDB image languages use ISO 639-1.
+    We request EN + AR + neutral.
+  */
+  const data =
+    await tmdb(endpoint, {
+      include_image_language: "en,ar,null"
+    });
+
+  const posters =
+    data.posters || [];
+
+  const english =
+    bestPoster(posters, "en");
+
+  const arabic =
+    bestPoster(posters, "ar");
+
+  const neutral =
+    bestNeutralPoster(posters);
+
+  const any =
+    bestAnyPoster(posters);
+
+  /*
+    EN:
+    official English poster first.
+    If not available → neutral → existing TMDB poster → any.
+
+    AR:
+    official Arabic poster first.
+    If not available → neutral → English → existing poster.
+  */
 
   const enPath =
-    path.join(dir, enFilename);
+    english?.file_path ||
+    neutral?.file_path ||
+    null;
 
   const arPath =
-    path.join(dir, arFilename);
-
-  await createImage({
-    posterBuffer: poster,
-    overlay: englishOverlay(
-      content.title_en,
-      getCategory(slot, false)
-    ),
-    output: enPath
-  });
-
-  await createImage({
-    posterBuffer: poster,
-    overlay: arabicOverlay(
-      content.title_ar || content.title_en,
-      getCategory(slot, true)
-    ),
-    output: arPath
-  });
+    arabic?.file_path ||
+    neutral?.file_path ||
+    english?.file_path ||
+    null;
 
   return {
-    english: {
-      file: enPath,
-      url:
-        `https://cimaly.cc/social/${todayStr()}/${enFilename}`
-    },
+    english:
+      imageUrl(enPath) ||
+      content.poster_original ||
+      content.poster_w780,
 
-    arabic: {
-      file: arPath,
-      url:
-        `https://cimaly.cc/social/${todayStr()}/${arFilename}`
-    }
+    arabic:
+      imageUrl(arPath) ||
+      content.poster_original ||
+      content.poster_w780,
+
+    hasArabicOfficial:
+      Boolean(arabic),
+
+    hasEnglishOfficial:
+      Boolean(english),
+
+    fallback:
+      imageUrl(any?.file_path) || ""
   };
 }
 
-async function main() {
-  if (!fs.existsSync(SELECTION_FILE)) {
-    throw new Error(
-      "data/last-social-selection.json not found"
-    );
-  }
+/* =========================
+   CIMALY BRANDING
+========================= */
 
-  const selection =
-    JSON.parse(
-      fs.readFileSync(
-        SELECTION_FILE,
-        "utf8"
-      )
-    );
-
-  const dayFolder =
-    path.join(
-      OUTPUT_ROOT,
-      todayStr()
-    );
-
-  fs.mkdirSync(
-    dayFolder,
-    {
-      recursive: true
+function categoryLabel(slot, language) {
+  if (language === "ar") {
+    if (slot === "morning_series") {
+      return "اختيار مسلسل";
     }
-  );
 
-  const output = {};
+    if (slot === "afternoon_anime") {
+      return "اختيار أنمي";
+    }
 
-  for (const [
-    slot,
-    content
-  ] of Object.entries(selection)) {
-    output[slot] =
-      await generateForContent(
-        slot,
-        content,
-        dayFolder
-      );
+    return "اختيار فيلم";
   }
 
-  const manifestPath =
-    path.join(
-      dayFolder,
-      "manifest.json"
-    );
+  if (slot === "morning_series") {
+    return "SERIES PICK";
+  }
 
-  fs.writeFileSync(
-    manifestPath,
-    JSON.stringify(
-      output,
-      null,
-      2
-    ) + "\n"
-  );
+  if (slot === "afternoon_anime") {
+    return "ANIME PICK";
+  }
 
-  console.log("");
-  console.log(
-    "✅ SOCIAL IMAGES GENERATED"
-  );
-
-  console.log(
-    JSON.stringify(
-      output,
-      null,
-      2
-    )
-  );
-
-  console.log("");
-  console.log(
-    "⚠️ Nothing sent to Buffer."
-  );
+  return "MOVIE PICK";
 }
 
-main().catch(error => {
-  console.error(
-    "❌",
-    error
-  );
+/*
+  IMPORTANT:
+  No movie title is added here.
 
-  process.exit(1);
-});
+  This lets each official poster keep its
+  typography / title treatment / identity.
+*/
+
+function englishBranding(slot) {
+  const label =
+    escapeXml(
+      categoryLabel(slot, "en")
+    );
+
+  return `
+  <svg
+    width="${WIDTH}"
+    height="${HEIGHT}"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <defs>
+      <linearGradient
+        id="footerFade"
+        x1="0"
+        y1="0"
+        x2="0"
+        y2="1"
+      >
+        <stop
+          offset="0%"
+          stop-color="#000"
+          stop-opacity="0"
+        />
+        <stop
+          offset="100%"
+          stop-color="#000"
+          stop-opacity="0.68"
+        />
+      </linearGradient>
+    </defs>
+
+    <!-- Very subtle lower fade -->
+    <rect
+      x="0"
+      y="990"
+      width="1080"
+      height="360"
+      fill="url(#footerFade)"
+    />
+
+    <!-- Cimaly logo -->
+    <rect
+      x="500"
+      y="38"
+      width="80"
+      height="80"
+      rx="18"
+      fill="#ef1717"
+    />
+
+    <text
+      x="540"
+      y="98"
+      text-anchor="middle"
+      font-family="Arial, Helvetica, sans-serif"
+      font-size="54"
+      font-weight="900"
+      fill="#ffffff"
+    >C</text>
+
+    <!-- Small category -->
+    <rect
+      x="416"
+      y="130"
+      width="248"
+      height="46"
+      rx="23"
+      fill="#000000"
+      fill-opacity="0.48"
+    />
+
+    <text
+      x="540"
+      y="161"
+      text-anchor="middle"
+      font-family="Arial, Helvetica, sans-serif"
+      font-size="19"
+      font-weight="600"
+      letter-spacing="3"
+      fill="#ffffff"
+    >${label}</text>
+
+    <!-- CTA -->
+    <rect
+      x="190"
+      y="1238"
+      width="700"
+      height="72"
+      rx="20"
+      fill="#080808"
+      fill-opacity="0.82"
+      stroke="#d8c18e"
+      stroke-width="2"
+    />
+
+    <text
+      x="540"
+      y="1285"
+      text-anchor="middle"
+      font-family="Arial, Helvetica, sans-serif"
+      font-size="27"
+      font-weight="400"
+      letter-spacing="2"
+      fill="#ffffff"
+    >
+      Watch now on
+      <tspan
+        fill="#ef1717"
+        font-weight="800"
+      > cimaly.cc</tspan>
+    </text>
+  </svg>`;
+}
+
+function arabicBranding(slot) {
+  const label =
+    escapeXml(
+      categoryLabel(slot, "ar")
+    );
+
+  return `
+  <svg
+    width="${WIDTH}"
+    height="${HEIGHT}"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <defs>
+      <linearGradient
+        id="footerFade"
+        x1="0"
+        y1="0"
+        x2="0"
+        y2="1"
+      >
+        <stop
+          offset="0%"
+          stop-color="#000"
+          stop-opacity="0"
+        />
+        <stop
+          offset="100%"
+          stop-color="#000"
+          stop-opacity="0.68"
+        />
+      </linearGradient>
+    </defs>
+
+    <rect
+      x="0"
+      y="990"
+      width="1080"
+      height="360"
+      fill="url(#footerFade)"
+    />
+
+    <!-- Cimaly logo -->
+    <rect
+      x="500"
+      y="38"
+      width="80"
+      height="80"
+      rx="18"
+      fill="#ef1717"
+    />
+
+    <text
+      x="540"
+      y="98"
+      text-anchor="middle"
+      font-family="Arial, Helvetica, sans-serif"
+      font-size="54"
+      font-weight="900"
+      fill="#ffffff"
+    >C</text>
+
+    <!-- Arabic category -->
+    <rect
+      x="416"
+      y="130"
+      width="248"
+      height="46"
+      rx="23"
+      fill="#000000"
+      fill-opacity="0.48"
+    />
+
+    <text
+      x="540"
+      y="162"
+      text-anchor="middle"
+      direction="rtl"
+      unicode-bidi="bidi-override"
+      font-family="DejaVu Sans, Arial, sans-serif"
+      font-size="22"
+      font-weight="600"
+      fill="#ffffff"
+    >${label}</text>
+
+    <!-- Arabic CTA -->
+    <rect
+      x="

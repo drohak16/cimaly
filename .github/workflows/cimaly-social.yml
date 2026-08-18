@@ -30,6 +30,9 @@ jobs:
         run: node scripts/cimaly-social.js
 
       - name: Generate EN AR social images
+        env:
+          TMDB_READ_TOKEN: ${{ secrets.TMDB_READ_TOKEN }}
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
         run: node scripts/generate-social-images.js
 
       - name: Save generated social files

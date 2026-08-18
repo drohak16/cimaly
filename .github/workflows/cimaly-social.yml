@@ -19,11 +19,6 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Test Buffer connection
-        env:
-          BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
-        run: node scripts/buffer-test.js
-
       - name: Run Cimaly social test
         env:
           TMDB_READ_TOKEN: ${{ secrets.TMDB_READ_TOKEN }}
@@ -31,9 +26,11 @@ jobs:
           BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
         run: node scripts/cimaly-social.js
 
-      - name: Save social history
+      - name: Save selection/history if changed
         run: |
           git config user.name "cimaly-social-bot"
           git config user.email "actions@github.com"
-          git add data/social-history.json
-         
+          git add data/social-history.json data/last-social-selection.json || true
+          git diff --cached --quiet && echo "No file changes to commit" && exit 0
+          git commit -m "Update Cimaly social data"
+          git push

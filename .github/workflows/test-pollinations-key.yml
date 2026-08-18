@@ -1,0 +1,19 @@
+name: Test Pollinations Key
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-key:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check Pollinations API key
+        env:
+          POLLINATIONS_API_KEY: ${{ secrets.POLLINATIONS_API_KEY }}
+        run: |
+          echo "Checking Pollinations API key..."
+
+          curl -sS \
+            "https://gen.pollinations.ai/account/key" \
+            -H "Authorization: Bearer $POLLINATIONS_API_KEY"

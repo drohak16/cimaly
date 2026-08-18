@@ -1,4 +1,4 @@
-name: Cimaly FLUX Visual Test
+name: Cimaly Gemini Visual Test
 
 on:
   workflow_dispatch:
@@ -19,8 +19,8 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Install image tools
-        run: npm install sharp --no-save
+      - name: Install Gemini SDK
+        run: npm install @google/genai --no-save
 
       - name: Select Cimaly content
         env:
@@ -29,14 +29,13 @@ jobs:
           BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
         run: node scripts/cimaly-social.js
 
-      - name: Generate movie EN AR with FLUX
+      - name: Generate movie EN AR with Gemini
         env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           TMDB_READ_TOKEN: ${{ secrets.TMDB_READ_TOKEN }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: node scripts/generate-social-images.js
 
-      - name: Save FLUX test images
+      - name: Save Gemini test images
         run: |
           git config user.name "cimaly-social-bot"
           git config user.email "actions@github.com"
@@ -49,5 +48,5 @@ jobs:
             exit 0
           fi
 
-          git commit -m "Generate Cimaly FLUX visual test"
+          git commit -m "Generate Cimaly Gemini visual test"
           git push

@@ -2,31 +2,37 @@
   "morning_series": {
     "english": {
       "file": "/home/runner/work/cimaly/cimaly/public/social/2026-08-18/morning_series-lanterns-en.jpg",
-      "url": "https://cimaly.cc/social/2026-08-18/morning_series-lanterns-en.jpg"
+      "url": "https://cimaly.cc/social/2026-08-18/morning_series-lanterns-en.jpg",
+      "official_poster": true
     },
     "arabic": {
       "file": "/home/runner/work/cimaly/cimaly/public/social/2026-08-18/morning_series-lanterns-ar.jpg",
-      "url": "https://cimaly.cc/social/2026-08-18/morning_series-lanterns-ar.jpg"
+      "url": "https://cimaly.cc/social/2026-08-18/morning_series-lanterns-ar.jpg",
+      "official_poster": true
     }
   },
   "afternoon_anime": {
     "english": {
       "file": "/home/runner/work/cimaly/cimaly/public/social/2026-08-18/afternoon_anime-the-ramparts-of-ice-en.jpg",
-      "url": "https://cimaly.cc/social/2026-08-18/afternoon_anime-the-ramparts-of-ice-en.jpg"
+      "url": "https://cimaly.cc/social/2026-08-18/afternoon_anime-the-ramparts-of-ice-en.jpg",
+      "official_poster": true
     },
     "arabic": {
       "file": "/home/runner/work/cimaly/cimaly/public/social/2026-08-18/afternoon_anime-the-ramparts-of-ice-ar.jpg",
-      "url": "https://cimaly.cc/social/2026-08-18/afternoon_anime-the-ramparts-of-ice-ar.jpg"
+      "url": "https://cimaly.cc/social/2026-08-18/afternoon_anime-the-ramparts-of-ice-ar.jpg",
+      "official_poster": false
     }
   },
   "evening_movie": {
     "english": {
       "file": "/home/runner/work/cimaly/cimaly/public/social/2026-08-18/evening_movie-spider-man-brand-new-day-en.jpg",
-      "url": "https://cimaly.cc/social/2026-08-18/evening_movie-spider-man-brand-new-day-en.jpg"
+      "url": "https://cimaly.cc/social/2026-08-18/evening_movie-spider-man-brand-new-day-en.jpg",
+      "official_poster": true
     },
     "arabic": {
       "file": "/home/runner/work/cimaly/cimaly/public/social/2026-08-18/evening_movie-spider-man-brand-new-day-ar.jpg",
-      "url": "https://cimaly.cc/social/2026-08-18/evening_movie-spider-man-brand-new-day-ar.jpg"
+      "url": "https://cimaly.cc/social/2026-08-18/evening_movie-spider-man-brand-new-day-ar.jpg",
+      "official_poster": true
     }
   }
 }

@@ -1,27 +1,30 @@
 import fs from "node:fs";
 import path from "node:path";
-import sharp from "sharp";
 
-const SELECTION_FILE = path.resolve("data/last-social-selection.json");
-const OUTPUT_ROOT = path.resolve("public/social");
-
+const POLLINATIONS_API_KEY = process.env.POLLINATIONS_API_KEY;
 const TMDB_TOKEN = process.env.TMDB_READ_TOKEN;
+
+if (!POLLINATIONS_API_KEY) {
+  throw new Error("POLLINATIONS_API_KEY is missing");
+}
 
 if (!TMDB_TOKEN) {
   throw new Error("TMDB_READ_TOKEN is missing");
 }
 
-const WIDTH = 1080;
-const HEIGHT = 1350;
+const MODEL = "nanobanana-2";
+
+const SELECTION_FILE = path.resolve("data/last-social-selection.json");
+const OUTPUT_ROOT = path.resolve("public/social");
 
 const TMDB_HEADERS = {
   Authorization: `Bearer ${TMDB_TOKEN}`,
   accept: "application/json"
 };
 
-/* =========================================================
-   BASIC HELPERS
-========================================================= */
+/* =========================
+   UTILS
+========================= */
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
@@ -37,892 +40,185 @@ function sanitizeFilename(text = "") {
     .slice(0, 60);
 }
 
-function containsArabic(text = "") {
-  return /[\u0600-\u06FF]/.test(text);
-}
-
-function escapeXml(text = "") {
-  return String(text)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
-}
-
-function splitWords(text = "", maxChars = 25) {
-  const words = text.trim().split(/\s+/);
-
-  const lines = [];
-  let current = "";
-
-  for (const word of words) {
-    const test = current
-      ? `${current} ${word}`
-      : word;
-
-    if (
-      test.length > maxChars &&
-      current
-    ) {
-      lines.push(current);
-      current = word;
-    } else {
-      current = test;
-    }
-  }
-
-  if (current) {
-    lines.push(current);
-  }
-
-  return lines.slice(0, 2);
-}
-
-/* =========================================================
-   TMDB
-========================================================= */
-
 async function tmdb(pathname) {
   const response = await fetch(
     `https://api.themoviedb.org/3${pathname}`,
-    {
-      headers: TMDB_HEADERS
-    }
+    { headers: TMDB_HEADERS }
   );
 
   if (!response.ok) {
     const text = await response.text();
-
-    throw new Error(
-      `TMDB ${response.status}: ${text}`
-    );
+    throw new Error(`TMDB ${response.status}: ${text}`);
   }
 
   return response.json();
 }
 
-async function downloadImage(url) {
+async function downloadBinary(url) {
   const response = await fetch(url);
 
   if (!response.ok) {
-    throw new Error(
-      `Poster download failed: ${response.status}`
-    );
+    const text = await response.text();
+    throw new Error(`Download failed ${response.status}: ${text}`);
   }
 
-  return Buffer.from(
-    await response.arrayBuffer()
-  );
+  return Buffer.from(await response.arrayBuffer());
 }
 
-/* =========================================================
-   ARABIC TITLE
-========================================================= */
+function buildPrompt(title) {
+  return [
+    `Edit the supplied official movie poster for "${title}".`,
+    `Create a premium cinematic vertical streaming promo for Cimaly for Instagram.`,
+    `Preserve the original composition, title, subtitle, characters, atmosphere, colors, and recognizability of the poster.`,
+    `Do not turn it into a different movie poster.`,
+    `Do not change the genre or main visual identity.`,
+    `Keep the official movie title visible and aesthetically intact.`,
+    `Do not cover or crop the title or subtitle.`,
+    `Do not add MOVIE PICK, SERIES PICK, or ANIME PICK.`,
+    `Add a small elegant "Cimaly" wordmark in a discreet empty area.`,
+    `Add a tasteful call to action near the bottom that reads exactly: "Watch now on cimaly.cc".`,
+    `The CTA must be elegant, readable, and must not cover the title, subtitle, faces, or important artwork.`,
+    `No thick black bars, no ugly template, no random extra text.`,
+    `The final result should feel premium, polished, cinematic, and very close to the original poster identity.`
+  ].join(" ");
+}
 
-async function getArabicTitle(content) {
-  if (
-    content.title_ar &&
-    containsArabic(content.title_ar)
-  ) {
-    return content.title_ar;
+async function extractEditedImage(response) {
+  const data = await response.json();
+
+  const first = data?.data?.[0];
+
+  if (!first) {
+    throw new Error(`No image returned by Pollinations: ${JSON.stringify(data)}`);
   }
 
-  const isMovie =
-    content.type === "movie";
-
-  const endpoint = isMovie
-    ? `/movie/${content.tmdb_id}/translations`
-    : `/tv/${content.tmdb_id}/translations`;
-
-  try {
-    const data = await tmdb(endpoint);
-
-    const arabic =
-      (data.translations || [])
-        .find(
-          item =>
-            item.iso_639_1 === "ar"
-        );
-
-    const title =
-      arabic?.data?.title ||
-      arabic?.data?.name ||
-      "";
-
-    if (
-      title &&
-      containsArabic(title)
-    ) {
-      return title;
-    }
-  } catch (error) {
-    console.log(
-      "⚠️ Arabic title lookup failed:",
-      error.message
-    );
+  if (first.b64_json) {
+    return Buffer.from(first.b64_json, "base64");
   }
 
-  return "";
-}
-
-/* =========================================================
-   PREPARE POSTER
-========================================================= */
-
-async function preparePoster(buffer) {
-  return sharp(buffer)
-    .resize(WIDTH, HEIGHT, {
-      fit: "cover",
-      position: "centre"
-    })
-    .jpeg({
-      quality: 94,
-      chromaSubsampling: "4:4:4"
-    })
-    .toBuffer();
-}
-
-/* =========================================================
-   SMART ZONE DETECTION
-========================================================= */
-
-const ZONES = [
-  {
-    name: "top-left",
-    left: 35,
-    top: 35,
-    width: 420,
-    height: 220
-  },
-  {
-    name: "top-right",
-    left: WIDTH - 455,
-    top: 35,
-    width: 420,
-    height: 220
-  },
-  {
-    name: "bottom-left",
-    left: 35,
-    top: HEIGHT - 255,
-    width: 420,
-    height: 220
-  },
-  {
-    name: "bottom-right",
-    left: WIDTH - 455,
-    top: HEIGHT - 255,
-    width: 420,
-    height: 220
-  }
-];
-
-async function analyzeZone(
-  poster,
-  zone
-) {
-  const stats =
-    await sharp(poster)
-      .extract({
-        left: zone.left,
-        top: zone.top,
-        width: zone.width,
-        height: zone.height
-      })
-      .greyscale()
-      .stats();
-
-  const channel =
-    stats.channels[0];
-
-  const brightness =
-    channel.mean;
-
-  const entropy =
-    stats.entropy || 0;
-
-  /*
-    Lower entropy = visually calmer.
-    Darker areas are usually better
-    for white text.
-  */
-
-  const brightnessPenalty =
-    brightness > 170
-      ? 35
-      : brightness > 130
-        ? 15
-        : 0;
-
-  const score =
-    entropy * 25 +
-    brightnessPenalty;
-
-  return {
-    ...zone,
-    brightness,
-    entropy,
-    score
-  };
-}
-
-async function findBestZones(poster) {
-  const results = [];
-
-  for (const zone of ZONES) {
-    results.push(
-      await analyzeZone(
-        poster,
-        zone
-      )
-    );
+  if (first.url) {
+    return await downloadBinary(first.url);
   }
 
-  results.sort(
-    (a, b) =>
-      a.score - b.score
-  );
-
-  return results;
+  throw new Error(`Unsupported Pollinations response: ${JSON.stringify(data)}`);
 }
 
-/* =========================================================
-   SVG ELEMENTS
-========================================================= */
+async function runPollinationsEdit({ imageBuffer, title }) {
+  const form = new FormData();
 
-function cimalyBadge(zone) {
-  const rightSide =
-    zone.name.includes("right");
-
-  const x =
-    rightSide
-      ? zone.left + zone.width - 24
-      : zone.left + 24;
-
-  const anchor =
-    rightSide
-      ? "end"
-      : "start";
-
-  return Buffer.from(`
-    <svg
-      width="${WIDTH}"
-      height="${HEIGHT}"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <text
-        x="${x}"
-        y="${zone.top + 62}"
-        text-anchor="${anchor}"
-        font-family="Arial, Helvetica, sans-serif"
-        font-size="40"
-        font-weight="700"
-        letter-spacing="1"
-        fill="white"
-        stroke="rgba(0,0,0,0.55)"
-        stroke-width="3"
-        paint-order="stroke"
-      >Cimaly</text>
-    </svg>
-  `);
-}
-
-function englishCTA(zone) {
-  const rightSide =
-    zone.name.includes("right");
-
-  const x =
-    rightSide
-      ? zone.left + zone.width - 24
-      : zone.left + 24;
-
-  const anchor =
-    rightSide
-      ? "end"
-      : "start";
-
-  return Buffer.from(`
-    <svg
-      width="${WIDTH}"
-      height="${HEIGHT}"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <rect
-        x="${rightSide
-          ? x - 325
-          : x - 14}"
-        y="${zone.top + 110}"
-        width="340"
-        height="62"
-        rx="31"
-        fill="rgba(0,0,0,0.42)"
-      />
-
-      <text
-        x="${x}"
-        y="${zone.top + 151}"
-        text-anchor="${anchor}"
-        font-family="Arial, Helvetica, sans-serif"
-        font-size="25"
-        font-weight="600"
-        fill="white"
-      >Watch now on cimaly.cc</text>
-    </svg>
-  `);
-}
-
-function arabicTitleSvg(
-  title,
-  zone
-) {
-  if (!title) {
-    return null;
-  }
-
-  const lines =
-    splitWords(
-      title,
-      18
-    );
-
-  const rightSide =
-    zone.name.includes("right");
-
-  const x =
-    rightSide
-      ? zone.left + zone.width - 24
-      : zone.left + 24;
-
-  const anchor =
-    rightSide
-      ? "end"
-      : "start";
-
-  const first =
-    escapeXml(
-      lines[0] || ""
-    );
-
-  const second =
-    escapeXml(
-      lines[1] || ""
-    );
-
-  return Buffer.from(`
-    <svg
-      width="${WIDTH}"
-      height="${HEIGHT}"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <text
-        x="${x}"
-        y="${zone.top + 80}"
-        text-anchor="${anchor}"
-        direction="rtl"
-        unicode-bidi="bidi-override"
-        font-family="Arial, sans-serif"
-        font-size="44"
-        font-weight="700"
-        fill="white"
-        stroke="rgba(0,0,0,0.7)"
-        stroke-width="4"
-        paint-order="stroke"
-      >
-        ${first}
-      </text>
-
-      ${
-        second
-          ? `
-            <text
-              x="${x}"
-              y="${zone.top + 134}"
-              text-anchor="${anchor}"
-              direction="rtl"
-              unicode-bidi="bidi-override"
-              font-family="Arial, sans-serif"
-              font-size="38"
-              font-weight="700"
-              fill="white"
-              stroke="rgba(0,0,0,0.7)"
-              stroke-width="4"
-              paint-order="stroke"
-            >
-              ${second}
-            </text>
-          `
-          : ""
-      }
-    </svg>
-  `);
-}
-
-function arabicCTA(zone) {
-  const rightSide =
-    zone.name.includes("right");
-
-  const x =
-    rightSide
-      ? zone.left + zone.width - 24
-      : zone.left + 24;
-
-  const anchor =
-    rightSide
-      ? "end"
-      : "start";
-
-  return Buffer.from(`
-    <svg
-      width="${WIDTH}"
-      height="${HEIGHT}"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <rect
-        x="${rightSide
-          ? x - 300
-          : x - 14}"
-        y="${zone.top + 145}"
-        width="315"
-        height="58"
-        rx="29"
-        fill="rgba(0,0,0,0.42)"
-      />
-
-      <text
-        x="${x}"
-        y="${zone.top + 184}"
-        text-anchor="${anchor}"
-        direction="rtl"
-        font-family="Arial, sans-serif"
-        font-size="24"
-        font-weight="600"
-        fill="white"
-      >شاهد الآن على cimaly.cc</text>
-    </svg>
-  `);
-}
-
-/* =========================================================
-   ENGLISH DESIGN
-========================================================= */
-
-async function createEnglishImage({
-  poster,
-  output
-}) {
-  const zones =
-    await findBestZones(
-      poster
-    );
-
-  const brandingZone =
-    zones[0];
-
-  let ctaZone =
-    zones.find(
-      z =>
-        z.name !==
-        brandingZone.name
-    );
-
-  if (!ctaZone) {
-    ctaZone = zones[1];
-  }
-
-  console.log(
-    `   Cimaly zone: ${brandingZone.name}`
+  form.append(
+    "image",
+    new Blob([imageBuffer], { type: "image/jpeg" }),
+    "poster.jpg"
   );
 
-  console.log(
-    `   CTA zone: ${ctaZone.name}`
-  );
+  form.append("model", MODEL);
+  form.append("prompt", buildPrompt(title));
+  form.append("response_format", "b64_json");
 
-  await sharp(poster)
-    .composite([
-      {
-        input:
-          cimalyBadge(
-            brandingZone
-          )
-      },
-
-      {
-        input:
-          englishCTA(
-            ctaZone
-          )
-      }
-    ])
-    .jpeg({
-      quality: 95
-    })
-    .toFile(output);
-}
-
-/* =========================================================
-   ARABIC DESIGN
-========================================================= */
-
-async function createArabicImage({
-  poster,
-  arabicTitle,
-  output
-}) {
-  const zones =
-    await findBestZones(
-      poster
-    );
-
-  const titleZone =
-    zones[0];
-
-  const remaining =
-    zones.filter(
-      zone =>
-        zone.name !==
-        titleZone.name
-    );
-
-  const brandingZone =
-    remaining[0] ||
-    zones[1];
-
-  const ctaZone =
-    remaining[1] ||
-    zones[2];
-
-  console.log(
-    `   Arabic title zone: ${titleZone.name}`
-  );
-
-  console.log(
-    `   Cimaly zone: ${brandingZone.name}`
-  );
-
-  console.log(
-    `   CTA zone: ${ctaZone.name}`
-  );
-
-  const overlays = [];
-
-  const titleSvg =
-    arabicTitleSvg(
-      arabicTitle,
-      titleZone
-    );
-
-  if (titleSvg) {
-    overlays.push({
-      input: titleSvg
-    });
-  }
-
-  overlays.push({
-    input:
-      cimalyBadge(
-        brandingZone
-      )
-  });
-
-  overlays.push({
-    input:
-      arabicCTA(
-        ctaZone
-      )
-  });
-
-  await sharp(poster)
-    .composite(overlays)
-    .jpeg({
-      quality: 95
-    })
-    .toFile(output);
-}
-
-/* =========================================================
-   CONTENT GENERATION
-========================================================= */
-
-async function generatePair(
-  content,
-  category
-) {
-  if (!content) {
-    console.log(
-      `⚠️ No ${category} selected`
-    );
-
-    return null;
-  }
-
-  const title =
-    content.title_en ||
-    content.name ||
-    "untitled";
-
-  console.log("");
-  console.log(
-    `🎨 Creating ${category}: ${title}`
-  );
-
-  const posterUrl =
-    content.poster_original ||
-    content.poster_w780 ||
-    content.poster_url;
-
-  if (!posterUrl) {
-    console.log(
-      `⚠️ No poster for ${title}`
-    );
-
-    return null;
-  }
-
-  console.log(
-    "⬇️ Downloading poster..."
-  );
-
-  const original =
-    await downloadImage(
-      posterUrl
-    );
-
-  const poster =
-    await preparePoster(
-      original
-    );
-
-  const arabicTitle =
-    await getArabicTitle(
-      content
-    );
-
-  console.log(
-    `🇸🇦 Arabic title: ${
-      arabicTitle ||
-      "not found"
-    }`
-  );
-
-  const dateFolder =
-    path.join(
-      OUTPUT_ROOT,
-      todayStr()
-    );
-
-  fs.mkdirSync(
-    dateFolder,
+  const response = await fetch(
+    "https://gen.pollinations.ai/v1/images/edits",
     {
-      recursive: true
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${POLLINATIONS_API_KEY}`
+      },
+      body: form
     }
   );
 
-  const slug =
-    sanitizeFilename(
-      title
-    ) ||
-    String(
-      content.tmdb_id
-    );
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Pollinations ${response.status}: ${text}`);
+  }
 
-  const enName =
-    `${category}-${slug}-en.jpg`;
-
-  const arName =
-    `${category}-${slug}-ar.jpg`;
-
-  const enPath =
-    path.join(
-      dateFolder,
-      enName
-    );
-
-  const arPath =
-    path.join(
-      dateFolder,
-      arName
-    );
-
-  console.log(
-    "🇬🇧 Creating EN..."
-  );
-
-  await createEnglishImage({
-    poster,
-    output:
-      enPath
-  });
-
-  console.log(
-    `✅ ${enName}`
-  );
-
-  console.log(
-    "🇸🇦 Creating AR..."
-  );
-
-  await createArabicImage({
-    poster,
-    arabicTitle,
-    output:
-      arPath
-  });
-
-  console.log(
-    `✅ ${arName}`
-  );
-
-  return {
-    category,
-    tmdb_id:
-      content.tmdb_id,
-
-    title_en:
-      title,
-
-    title_ar:
-      arabicTitle,
-
-    poster:
-      posterUrl,
-
-    english:
-      enName,
-
-    arabic:
-      arName
-  };
+  return await extractEditedImage(response);
 }
 
-/* =========================================================
-   MAIN
-========================================================= */
+/* =========================
+   MAIN TEST
+========================= */
 
 async function main() {
-  if (
-    !fs.existsSync(
-      SELECTION_FILE
-    )
-  ) {
-    throw new Error(
-      "data/last-social-selection.json not found"
-    );
+  if (!fs.existsSync(SELECTION_FILE)) {
+    throw new Error("data/last-social-selection.json not found");
   }
 
-  const selection =
-    JSON.parse(
-      fs.readFileSync(
-        SELECTION_FILE,
-        "utf8"
-      )
-    );
+  const selection = JSON.parse(
+    fs.readFileSync(SELECTION_FILE, "utf8")
+  );
+
+  const movie = selection.evening_movie;
+
+  if (!movie) {
+    throw new Error("evening_movie not found in selection file");
+  }
 
   console.log("");
-  console.log(
-    "🎬 CIMALY SHARP SOCIAL DESIGN"
-  );
+  console.log("🎬 CIMALY POLLINATIONS TEST");
+  console.log(`Movie: ${movie.title_en}`);
 
-  const results = [];
+  const posterUrl =
+    movie.poster_original ||
+    movie.poster_w780 ||
+    movie.poster_url;
 
-  const series =
-    await generatePair(
-      selection.morning_series,
-      "series"
-    );
-
-  if (series) {
-    results.push(series);
+  if (!posterUrl) {
+    throw new Error("No poster URL found for selected movie");
   }
 
-  const anime =
-    await generatePair(
-      selection.afternoon_anime,
-      "anime"
-    );
+  console.log("⬇️ Downloading TMDB poster...");
+  const posterBuffer = await downloadBinary(posterUrl);
+  console.log(`✅ Poster downloaded (${Math.round(posterBuffer.length / 1024)} KB)`);
 
-  if (anime) {
-    results.push(anime);
-  }
+  console.log("🎨 Generating EN visual with Pollinations...");
+  const editedImage = await runPollinationsEdit({
+    imageBuffer: posterBuffer,
+    title: movie.title_en
+  });
 
-  const movie =
-    await generatePair(
-      selection.evening_movie,
-      "movie"
-    );
+  const folder = path.join(OUTPUT_ROOT, todayStr());
+  fs.mkdirSync(folder, { recursive: true });
 
-  if (movie) {
-    results.push(movie);
-  }
+  const slug =
+    sanitizeFilename(movie.title_en) ||
+    String(movie.tmdb_id);
 
-  const folder =
-    path.join(
-      OUTPUT_ROOT,
-      todayStr()
-    );
+  const filename = `pollinations-test-${slug}-en.png`;
+  const outputPath = path.join(folder, filename);
 
-  fs.mkdirSync(
-    folder,
-    {
-      recursive: true
-    }
-  );
+  fs.writeFileSync(outputPath, editedImage);
 
   const manifest = {
-    generator:
-      "Sharp",
-
-    date:
-      todayStr(),
-
-    buffer:
-      false,
-
-    design_version:
-      "cimaly-smart-minimal-v1",
-
-    generated:
-      results
+    generator: "Pollinations.ai",
+    model: MODEL,
+    test: true,
+    buffer: false,
+    content: {
+      type: movie.type,
+      tmdb_id: movie.tmdb_id,
+      title_en: movie.title_en,
+      poster: posterUrl
+    },
+    files: {
+      english: filename
+    }
   };
 
   fs.writeFileSync(
-    path.join(
-      folder,
-      "manifest.json"
-    ),
-
-    JSON.stringify(
-      manifest,
-      null,
-      2
-    ) + "\n"
+    path.join(folder, "pollinations-test-manifest.json"),
+    JSON.stringify(manifest, null, 2) + "\n"
   );
 
   console.log("");
-  console.log(
-    "✅ CIMALY SOCIAL VISUALS COMPLETE"
-  );
-
-  console.log(
-    `✅ ${results.length * 2} images generated`
-  );
-
-  console.log(
-    "🚫 Buffer remains OFF"
-  );
+  console.log("✅ CIMALY POLLINATIONS TEST COMPLETE");
+  console.log(`✅ EN image saved: ${filename}`);
+  console.log("🚫 Buffer publishing OFF");
 }
 
-main()
-  .catch(error => {
-    console.error("");
-    console.error(
-      "❌ CIMALY SHARP ERROR"
-    );
-
-    console.error(
-      error.stack ||
-      error.message
-    );
-
-    process.exit(1);
-  });
+main().catch(error => {
+  console.error("");
+  console.error("❌ CIMALY POLLINATIONS ERROR");
+  console.error(error.message);
+  process.exit(1);
+});

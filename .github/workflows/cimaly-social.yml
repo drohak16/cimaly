@@ -1,4 +1,4 @@
-name: Cimaly Gemini Visual Test
+name: Cimaly Sharp Visual Test
 
 on:
   workflow_dispatch:
@@ -19,23 +19,21 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Install Gemini SDK
-        run: npm install @google/genai --no-save
+      - name: Install Sharp
+        run: npm install sharp --no-save
 
       - name: Select Cimaly content
         env:
           TMDB_READ_TOKEN: ${{ secrets.TMDB_READ_TOKEN }}
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
-          BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
         run: node scripts/cimaly-social.js
 
-      - name: Generate movie EN AR with Gemini
+      - name: Generate Cimaly Sharp visuals
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           TMDB_READ_TOKEN: ${{ secrets.TMDB_READ_TOKEN }}
         run: node scripts/generate-social-images.js
 
-      - name: Save Gemini test images
+      - name: Save generated images
         run: |
           git config user.name "cimaly-social-bot"
           git config user.email "actions@github.com"
@@ -44,9 +42,9 @@ jobs:
           git add public/social
 
           if git diff --cached --quiet; then
-            echo "No files changed"
+            echo "No changes to commit"
             exit 0
           fi
 
-          git commit -m "Generate Cimaly Gemini visual test"
+          git commit -m "Generate Cimaly Sharp social visuals"
           git push

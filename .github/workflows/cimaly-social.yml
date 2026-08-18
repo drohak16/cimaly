@@ -1,4 +1,4 @@
-name: Cimaly Social Visual Test
+name: Cimaly Cloudflare Movie Test
 
 on:
   workflow_dispatch:
@@ -19,9 +19,6 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Install image generator
-        run: npm install sharp --no-save
-
       - name: Select Cimaly content
         env:
           TMDB_READ_TOKEN: ${{ secrets.TMDB_READ_TOKEN }}
@@ -29,10 +26,11 @@ jobs:
           BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
         run: node scripts/cimaly-social.js
 
-      - name: Generate EN AR social images
+      - name: Generate one movie EN AR with Cloudflare AI
         env:
           TMDB_READ_TOKEN: ${{ secrets.TMDB_READ_TOKEN }}
-          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: node scripts/generate-social-images.js
 
       - name: Save generated social files
@@ -48,5 +46,5 @@ jobs:
             exit 0
           fi
 
-          git commit -m "Generate corrected Cimaly social visuals"
+          git commit -m "Generate Cloudflare movie EN AR test"
           git push

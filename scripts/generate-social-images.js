@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import sharp from "sharp";
 
 const TMDB_TOKEN = process.env.TMDB_READ_TOKEN;
 const CLOUDFLARE_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
@@ -18,7 +19,7 @@ if (!CLOUDFLARE_ACCOUNT_ID) {
 }
 
 const MODEL =
-  "@cf/runwayml/stable-diffusion-v1-5-img2img";
+  "@cf/black-forest-labs/flux-2-klein-4b";
 
 const SELECTION_FILE =
   path.resolve("data/last-social-selection.json");
@@ -26,8 +27,8 @@ const SELECTION_FILE =
 const OUTPUT_ROOT =
   path.resolve("public/social");
 
-const WIDTH = 1080;
-const HEIGHT = 1350;
+const OUTPUT_WIDTH = 1024;
+const OUTPUT_HEIGHT = 1280;
 
 const TMDB_HEADERS = {
   Authorization: `Bearer ${TMDB_TOKEN}`,
@@ -35,7 +36,7 @@ const TMDB_HEADERS = {
 };
 
 /* =========================
-   BASIC UTILS
+   UTILITIES
 ========================= */
 
 function todayStr() {
@@ -96,11 +97,11 @@ async function tmdb(pathname, params = {}) {
     });
 
   if (!response.ok) {
-    const errorText =
+    const text =
       await response.text();
 
     throw new Error(
-      `TMDB ${response.status} on ${pathname}: ${errorText}`
+      `TMDB ${response.status}: ${text}`
     );
   }
 
@@ -146,8 +147,8 @@ async function getArabicTitle(content) {
     const arabic =
       (data.translations || [])
         .find(
-          t =>
-            t.iso_639_1 === "ar"
+          item =>
+            item.iso_639_1 === "ar"
         );
 
     const candidate =
@@ -163,7 +164,7 @@ async function getArabicTitle(content) {
     }
   } catch (error) {
     console.log(
-      "⚠️ Arabic translation lookup failed:",
+      "⚠️ Arabic title lookup failed:",
       error.message
     );
   }
@@ -172,159 +173,227 @@ async function getArabicTitle(content) {
 }
 
 /* =========================
-   PROMPTS
+   PREPARE REFERENCE IMAGE
+========================= */
+
+async function prepareReferenceImage(
+  posterBuffer
+) {
+  /*
+    FLUX.2 Klein reference images
+    must be below 512x512.
+
+    We preserve the full poster,
+    only making a small reference copy.
+  */
+
+  return sharp(posterBuffer)
+    .resize({
+      width: 500,
+      height: 500,
+      fit: "inside",
+      withoutEnlargement: true
+    })
+    .png()
+    .toBuffer();
+}
+
+/* =========================
+   ENGLISH PROMPT
 ========================= */
 
 function buildEnglishPrompt(content) {
-  return [
-    `Edit the supplied official movie poster for "${content.title_en}".`,
-    `Create a premium vertical Instagram 4:5 social poster.`,
-    `Preserve the original composition, characters, lighting, colors, atmosphere and overall poster identity.`,
-    `Keep the official movie title and subtitle fully visible.`,
-    `Do not cover or crop the movie title.`,
-    `Do not add MOVIE PICK, SERIES PICK or ANIME PICK.`,
-    `Do not place a large logo in the center.`,
-    `Add a subtle elegant Cimaly wordmark in a free area of the artwork where it does not cover any important text or character.`,
-    `Add the exact CTA "Watch now on cimaly.cc" near the bottom.`,
-    `The CTA must be elegant, small and readable.`,
-    `The CTA must not cover the title, subtitle, faces or important artwork.`,
-    `Do not create black header or footer bands.`,
-    `Keep the result extremely close to the original poster.`,
-    `Do not redesign the movie poster into a different composition.`,
-    `High-end streaming advertising design, cinematic and clean.`
-  ].join(" ");
+  return `
+IMAGE 0 is the official poster for "${content.title_en}".
+
+Create a premium vertical 4:5 Cimaly social advertisement based closely on IMAGE 0.
+
+CRITICAL RULES:
+
+Preserve the original poster identity.
+Preserve the main characters.
+Preserve the original colors.
+Preserve the lighting.
+Preserve the cinematic atmosphere.
+Preserve the visual composition as closely as possible.
+
+The poster must still clearly look like the same official movie poster.
+
+Keep the original movie title clearly visible.
+Do not cover the title.
+Do not crop the subtitle.
+Do not place anything over important typography.
+
+Do NOT add:
+MOVIE PICK
+SERIES PICK
+ANIME PICK
+
+Do NOT use a large centered C logo.
+
+Instead place a small elegant text wordmark:
+Cimaly
+
+Put the Cimaly wordmark discreetly in a visually empty area of the poster.
+
+Add one elegant CTA near the bottom:
+
+Watch now on cimaly.cc
+
+The CTA must be clearly readable but subtle.
+It must not cover the movie title, subtitle, faces, characters, or important artwork.
+
+Do not add large black header bars.
+Do not add large black footer bars.
+Do not create a generic social media template.
+
+Use the poster artwork itself as the design.
+
+The finished advertisement should look individually art-directed for this specific movie.
+
+Output should look premium, cinematic and professional.
+`;
 }
+
+/* =========================
+   ARABIC PROMPT
+========================= */
 
 function buildArabicPrompt(
   content,
   arabicTitle
 ) {
-  const titleInstruction =
-    arabicTitle
-      ? [
-          `Create an Arabic version of the title using the translation "${arabicTitle}".`,
-          `The Arabic title must be clearly visible.`,
-          `Match the visual personality, scale, positioning and style of the original movie title as closely as possible.`,
-          `Do not use a generic banner behind the Arabic title.`,
-          `Do not cover faces or important artwork with the Arabic title.`
-        ].join(" ")
-      : [
-          `Keep the original movie title clearly visible.`,
-          `Do not invent an incorrect Arabic translation.`
-        ].join(" ");
+  return `
+IMAGE 0 is the official poster for "${content.title_en}".
 
-  return [
-    `Edit the supplied official movie poster for "${content.title_en}".`,
-    `Create a premium vertical Instagram 4:5 Arabic social poster.`,
-    `Preserve the original composition, characters, lighting, colors, atmosphere and overall poster identity.`,
-    titleInstruction,
-    `Do not add MOVIE PICK, SERIES PICK or ANIME PICK.`,
-    `Do not place a large logo in the center.`,
-    `Add a subtle elegant Cimaly wordmark in a free area of the artwork.`,
-    `Add the exact CTA "Watch now on cimaly.cc" near the bottom.`,
-    `Keep the website address in Latin characters exactly as cimaly.cc.`,
-    `The CTA must not cover the original title, Arabic title, subtitle, faces or important artwork.`,
-    `Do not create black header or footer bands.`,
-    `Do not completely redesign the movie poster.`,
-    `Keep the result extremely close to the original poster.`,
-    `Arabic typography must be clean, correctly connected, centered appropriately and readable.`,
-    `High-end streaming advertising design, cinematic and clean.`
-  ].join(" ");
-}
+Create the Arabic version of the SAME premium vertical 4:5 Cimaly social advertisement.
 
-function negativePrompt() {
-  return [
-    "ugly graphic design",
-    "generic social media template",
-    "black header",
-    "black footer",
-    "movie pick",
-    "series pick",
-    "anime pick",
-    "large centered logo",
-    "covered movie title",
-    "covered subtitle",
-    "cropped title",
-    "cropped text",
-    "unreadable text",
-    "garbled letters",
-    "broken Arabic",
-    "disconnected Arabic letters",
-    "random text",
-    "extra text",
-    "watermark",
-    "distorted face",
-    "warped anatomy",
-    "extra limbs",
-    "low quality",
-    "blurry",
-    "different movie poster",
-    "completely different composition"
-  ].join(", ");
+CRITICAL:
+
+Use IMAGE 0 as the visual reference.
+Keep the same characters, composition, lighting, colors and cinematic identity.
+
+This must clearly remain the same movie poster.
+
+The Arabic movie title is:
+
+"${arabicTitle}"
+
+Replace or reinterpret the visible movie title with the Arabic title "${arabicTitle}".
+
+The Arabic title MUST be visible.
+The Arabic title MUST be readable.
+The Arabic title MUST NOT be cropped.
+The Arabic title MUST NOT cover a face.
+The Arabic title MUST NOT be placed randomly.
+
+Adapt the typography so it feels inspired by the original movie title design.
+
+Keep the original poster's artistic personality.
+
+Do NOT add:
+MOVIE PICK
+SERIES PICK
+ANIME PICK
+
+Do NOT use a large centered C logo.
+
+Use only a small elegant Cimaly wordmark in an empty area.
+
+Add this CTA near the bottom:
+
+Watch now on cimaly.cc
+
+Keep that CTA exactly in English.
+
+It must not cover the movie title, subtitle, faces or important artwork.
+
+No large black header.
+No large black footer.
+No generic template.
+
+The finished Arabic poster must feel like an authentic Arabic localization of the English poster, not a completely different poster.
+`;
 }
 
 /* =========================
-   CLOUDFLARE AI
+   EXTRACT CLOUDFLARE IMAGE
 ========================= */
 
-function isCapacityError(
-  status,
-  errorText
+async function extractImageFromResponse(
+  response
 ) {
-  return (
-    status === 429 &&
-    (
-      errorText.includes(
-        '"code":3040'
-      ) ||
-      errorText.includes(
-        "Capacity temporarily exceeded"
-      ) ||
-      errorText.includes(
-        "Out of capacity"
-      )
+  const contentType =
+    response.headers
+      .get("content-type") || "";
+
+  /*
+    FLUX generally returns JSON
+    containing a base64 image.
+  */
+
+  if (
+    contentType.includes(
+      "application/json"
     )
+  ) {
+    const json =
+      await response.json();
+
+    const base64 =
+      json?.result?.image ||
+      json?.image ||
+      (
+        typeof json?.result === "string"
+          ? json.result
+          : null
+      );
+
+    if (!base64) {
+      throw new Error(
+        `Cloudflare returned JSON but no image: ${JSON.stringify(json)}`
+      );
+    }
+
+    const cleanBase64 =
+      base64.includes(",")
+        ? base64.split(",").pop()
+        : base64;
+
+    return Buffer.from(
+      cleanBase64,
+      "base64"
+    );
+  }
+
+  /*
+    Fallback in case Cloudflare
+    responds directly with image bytes.
+  */
+
+  return Buffer.from(
+    await response.arrayBuffer()
   );
 }
 
-async function runCloudflareEdit({
+/* =========================
+   CLOUDFLARE FLUX EDIT
+========================= */
+
+async function runFluxEdit({
   prompt,
-  imageBuffer,
+  referenceBuffer,
   seed
 }) {
-  const url =
+  const endpoint =
     `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/ai/run/${MODEL}`;
 
-  const payload = {
-    prompt,
-    negative_prompt:
-      negativePrompt(),
+  const reference =
+    await prepareReferenceImage(
+      referenceBuffer
+    );
 
-    image_b64:
-      imageBuffer.toString(
-        "base64"
-      ),
-
-    width:
-      WIDTH,
-
-    height:
-      HEIGHT,
-
-    num_steps:
-      20,
-
-    // Low strength = closer to original poster
-    strength:
-      0.28,
-
-    guidance:
-      7.5,
-
-    seed
-  };
-
-  const MAX_ATTEMPTS = 5;
+  const MAX_ATTEMPTS = 3;
 
   for (
     let attempt = 1;
@@ -332,34 +401,79 @@ async function runCloudflareEdit({
     attempt++
   ) {
     console.log(
-      `☁️ Cloudflare AI attempt ${attempt}/${MAX_ATTEMPTS}`
+      `☁️ FLUX attempt ${attempt}/${MAX_ATTEMPTS}`
     );
 
+    const form =
+      new FormData();
+
+    form.append(
+      "prompt",
+      prompt
+    );
+
+    /*
+      IMPORTANT:
+      Cloudflare requires exactly
+      input_image_0 for reference image.
+    */
+
+    form.append(
+      "input_image_0",
+      new Blob(
+        [reference],
+        {
+          type: "image/png"
+        }
+      ),
+      "poster-reference.png"
+    );
+
+    form.append(
+      "width",
+      String(OUTPUT_WIDTH)
+    );
+
+    form.append(
+      "height",
+      String(OUTPUT_HEIGHT)
+    );
+
+    form.append(
+      "guidance",
+      "4"
+    );
+
+    form.append(
+      "seed",
+      String(seed)
+    );
+
+    /*
+      DO NOT manually set Content-Type.
+      fetch creates the correct multipart boundary.
+    */
+
     const response =
-      await fetch(url, {
+      await fetch(endpoint, {
         method: "POST",
 
         headers: {
           Authorization:
-            `Bearer ${CLOUDFLARE_API_TOKEN}`,
-
-          "Content-Type":
-            "application/json"
+            `Bearer ${CLOUDFLARE_API_TOKEN}`
         },
 
         body:
-          JSON.stringify(
-            payload
-          )
+          form
       });
 
     if (response.ok) {
       console.log(
-        "✅ Cloudflare AI generation successful."
+        "✅ FLUX generation successful"
       );
 
-      return Buffer.from(
-        await response.arrayBuffer()
+      return extractImageFromResponse(
+        response
       );
     }
 
@@ -367,7 +481,7 @@ async function runCloudflareEdit({
       await response.text();
 
     console.log(
-      `⚠️ Cloudflare returned ${response.status}`
+      `⚠️ FLUX HTTP ${response.status}`
     );
 
     console.log(
@@ -375,58 +489,48 @@ async function runCloudflareEdit({
     );
 
     const temporary =
-      isCapacityError(
-        response.status,
-        errorText
+      response.status === 429 ||
+      errorText.includes(
+        "Capacity temporarily exceeded"
+      ) ||
+      errorText.includes(
+        '"code":3040'
       );
 
     if (!temporary) {
       throw new Error(
-        `Cloudflare AI error ${response.status}: ${errorText}`
+        `FLUX error ${response.status}: ${errorText}`
       );
     }
 
     if (
-      attempt ===
-      MAX_ATTEMPTS
+      attempt === MAX_ATTEMPTS
     ) {
       throw new Error(
-        `Cloudflare AI remained out of capacity after ${MAX_ATTEMPTS} attempts.`
+        "FLUX temporarily unavailable after 3 attempts."
       );
     }
 
-    const delays = [
-      20,
-      40,
-      60,
-      90,
-      120
-    ];
-
     const waitSeconds =
-      delays[
-        attempt - 1
-      ] || 120;
+      attempt === 1
+        ? 15
+        : 30;
 
     console.log(
-      `⏳ Cloudflare capacity busy. Waiting ${waitSeconds} seconds...`
+      `⏳ Waiting ${waitSeconds}s...`
     );
 
     await sleep(
       waitSeconds * 1000
     );
   }
-
-  throw new Error(
-    "Cloudflare AI generation failed unexpectedly."
-  );
 }
 
 /* =========================
-   GENERATE TEST MOVIE
+   GENERATE ONE MOVIE
 ========================= */
 
-async function generateMoviePosters() {
+async function generateMovieTest() {
   if (
     !fs.existsSync(
       SELECTION_FILE
@@ -445,68 +549,75 @@ async function generateMoviePosters() {
       )
     );
 
-  const content =
+  const movie =
     selection.evening_movie;
 
-  if (!content) {
+  if (!movie) {
     throw new Error(
-      "evening_movie not found in selection file"
+      "evening_movie missing"
     );
   }
 
   console.log("");
   console.log(
-    `🎬 Selected movie for Cloudflare test: ${content.title_en}`
+    "🎬 CIMALY FLUX TEST"
+  );
+
+  console.log(
+    `Movie: ${movie.title_en}`
   );
 
   const arabicTitle =
     await getArabicTitle(
-      content
+      movie
     );
 
-  if (arabicTitle) {
-    console.log(
-      `🇸🇦 Arabic title found: ${arabicTitle}`
-    );
-  } else {
-    console.log(
-      "⚠️ No Arabic title found."
+  console.log(
+    `Arabic title: ${
+      arabicTitle ||
+      "NOT FOUND"
+    }`
+  );
+
+  if (!arabicTitle) {
+    throw new Error(
+      "Arabic title required for this test."
     );
   }
 
   const posterUrl =
-    content.poster_original ||
-    content.poster_w780;
+    movie.poster_original ||
+    movie.poster_w780;
 
   if (!posterUrl) {
     throw new Error(
-      "No poster URL found in selected movie."
+      "Movie poster URL missing"
     );
   }
 
   console.log(
-    "⬇️ Downloading original TMDB poster..."
+    "⬇️ Downloading TMDB poster..."
   );
 
-  const posterBuffer =
+  const poster =
     await downloadImage(
       posterUrl
     );
 
   console.log(
-    `✅ Poster downloaded: ${Math.round(
-      posterBuffer.length / 1024
-    )} KB`
+    `✅ Poster downloaded (${Math.round(
+      poster.length / 1024
+    )} KB)`
   );
 
-  const dateFolder =
+  const folder =
     path.join(
       OUTPUT_ROOT,
       todayStr()
     );
 
   fs.mkdirSync(
-    dateFolder,
+    folder,
     {
       recursive: true
     }
@@ -514,92 +625,120 @@ async function generateMoviePosters() {
 
   const slug =
     sanitizeFilename(
-      content.title_en
+      movie.title_en
     ) ||
-    String(
-      content.tmdb_id
-    );
+    String(movie.tmdb_id);
 
-  const enFilename =
-    `movie-test-${slug}-en.png`;
+  const englishFilename =
+    `flux-test-${slug}-en.png`;
 
-  const arFilename =
-    `movie-test-${slug}-ar.png`;
+  const arabicFilename =
+    `flux-test-${slug}-ar.png`;
 
-  const enOutput =
+  const englishPath =
     path.join(
-      dateFolder,
-      enFilename
+      folder,
+      englishFilename
     );
 
-  const arOutput =
+  const arabicPath =
     path.join(
-      dateFolder,
-      arFilename
+      folder,
+      arabicFilename
     );
 
-  /* ENGLISH */
+  /*
+    ENGLISH
+  */
 
   console.log("");
   console.log(
-    "🎨 Generating EN version with Cloudflare AI..."
+    "🇬🇧 Generating English visual..."
   );
 
-  const enImage =
-    await runCloudflareEdit({
+  const englishImage =
+    await runFluxEdit({
       prompt:
         buildEnglishPrompt(
-          content
+          movie
         ),
 
-      imageBuffer:
-        posterBuffer,
+      referenceBuffer:
+        poster,
 
       seed:
-        1101
+        20260818
     });
 
-  fs.writeFileSync(
-    enOutput,
-    enImage
-  );
+  await sharp(
+    englishImage
+  )
+    .resize(
+      1080,
+      1350,
+      {
+        fit: "cover"
+      }
+    )
+    .png()
+    .toFile(
+      englishPath
+    );
 
   console.log(
-    `✅ EN image saved: ${enFilename}`
+    `✅ EN saved: ${englishFilename}`
   );
 
-  /* ARABIC */
+  /*
+    ARABIC
+  */
 
   console.log("");
   console.log(
-    "🎨 Generating AR version with Cloudflare AI..."
+    "🇸🇦 Generating Arabic visual..."
   );
 
-  const arImage =
-    await runCloudflareEdit({
+  const arabicImage =
+    await runFluxEdit({
       prompt:
         buildArabicPrompt(
-          content,
+          movie,
           arabicTitle
         ),
 
-      imageBuffer:
-        posterBuffer,
+      referenceBuffer:
+        poster,
 
+      /*
+        Same seed helps keep
+        EN / AR visually related.
+      */
       seed:
-        1101
+        20260818
     });
 
-  fs.writeFileSync(
-    arOutput,
-    arImage
-  );
+  await sharp(
+    arabicImage
+  )
+    .resize(
+      1080,
+      1350,
+      {
+        fit: "cover"
+      }
+    )
+    .png()
+    .toFile(
+      arabicPath
+    );
 
   console.log(
-    `✅ AR image saved: ${arFilename}`
+    `✅ AR saved: ${arabicFilename}`
   );
 
-  /* MANIFEST */
+  /*
+    MANIFEST
+  */
 
   const manifest = {
     generator:
@@ -608,52 +747,39 @@ async function generateMoviePosters() {
     model:
       MODEL,
 
-    test_only:
+    test:
       true,
 
-    buffer_publishing:
+    buffer:
       false,
 
-    tested_content: {
-      type:
-        content.type,
-
+    content: {
       tmdb_id:
-        content.tmdb_id,
+        movie.tmdb_id,
 
       title_en:
-        content.title_en,
+        movie.title_en,
 
       title_ar:
         arabicTitle,
 
-      source_poster:
+      poster:
         posterUrl
     },
 
-    outputs: {
-      english: {
-        file:
-          enOutput,
+    files: {
+      english:
+        englishFilename,
 
-        url:
-          `https://cimaly.cc/social/${todayStr()}/${enFilename}`
-      },
-
-      arabic: {
-        file:
-          arOutput,
-
-        url:
-          `https://cimaly.cc/social/${todayStr()}/${arFilename}`
-      }
+      arabic:
+        arabicFilename
     }
   };
 
   fs.writeFileSync(
     path.join(
-      dateFolder,
-      "manifest.json"
+      folder,
+      "flux-test-manifest.json"
     ),
 
     JSON.stringify(
@@ -665,27 +791,19 @@ async function generateMoviePosters() {
 
   console.log("");
   console.log(
-    "✅ CLOUDFLARE MOVIE TEST COMPLETE"
+    "✅ CIMALY FLUX TEST COMPLETE"
   );
 
   console.log(
-    `🎬 ${content.title_en}`
+    "✅ English generated"
   );
 
   console.log(
-    `🇸🇦 ${arabicTitle || "No Arabic title"}`
+    "✅ Arabic generated"
   );
 
   console.log(
-    "✅ EN image generated"
-  );
-
-  console.log(
-    "✅ AR image generated"
-  );
-
-  console.log(
-    "⚠️ Buffer publishing remains OFF."
+    "🚫 Buffer publishing OFF"
   );
 }
 
@@ -693,11 +811,11 @@ async function generateMoviePosters() {
    START
 ========================= */
 
-generateMoviePosters()
+generateMovieTest()
   .catch(error => {
     console.error("");
     console.error(
-      "❌ ERROR:"
+      "❌ CIMALY FLUX ERROR"
     );
 
     console.error(

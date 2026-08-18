@@ -1,4 +1,4 @@
-name: Cimaly Sharp Visual Test
+name: Cimaly Pollinations Visual Test
 
 on:
   workflow_dispatch:
@@ -19,21 +19,20 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Install Sharp
-        run: npm install sharp --no-save
-
       - name: Select Cimaly content
         env:
           TMDB_READ_TOKEN: ${{ secrets.TMDB_READ_TOKEN }}
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
         run: node scripts/cimaly-social.js
 
-      - name: Generate Cimaly Sharp visuals
+      - name: Generate movie EN with Pollinations
         env:
+          POLLINATIONS_API_KEY: ${{ secrets.POLLINATIONS_API_KEY }}
           TMDB_READ_TOKEN: ${{ secrets.TMDB_READ_TOKEN }}
         run: node scripts/generate-social-images.js
 
-      - name: Save generated images
+      - name: Save generated files
         run: |
           git config user.name "cimaly-social-bot"
           git config user.email "actions@github.com"
@@ -42,9 +41,9 @@ jobs:
           git add public/social
 
           if git diff --cached --quiet; then
-            echo "No changes to commit"
+            echo "No files changed"
             exit 0
           fi
 
-          git commit -m "Generate Cimaly Sharp social visuals"
+          git commit -m "Generate Cimaly Pollinations visual test"
           git push

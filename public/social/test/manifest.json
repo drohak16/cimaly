@@ -1,0 +1,12 @@
+{
+  "imported_at": "2026-08-18T22:10:11.779Z",
+  "cloudinary": {
+    "public_id": "cimaly-test-visual",
+    "asset_folder": "cimaly/social/test",
+    "secure_url": "https://res.cloudinary.com/vzsas2fn/image/upload/v1787085104/cimaly-test-visual.jpg",
+    "format": "jpg",
+    "width": 240,
+    "height": 426
+  },
+  "github_path": "/home/runner/work/cimaly/cimaly/public/social/test/cimaly-test-visual.jpg"
+}

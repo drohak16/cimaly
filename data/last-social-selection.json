@@ -1,0 +1,59 @@
+{
+  "morning_series": {
+    "tmdb_id": 291496,
+    "type": "tv",
+    "year_date": "2026-08-07",
+    "popularity": 124.6849,
+    "vote_average": 8.523,
+    "vote_count": 44,
+    "origin_country": [
+      "KR"
+    ],
+    "original_language": "ko",
+    "title_en": "Our Sticky Love",
+    "title_ar": "حب كحلوى التوفي",
+    "overview_en": "An ambitious prosecutor loses her memory and moves in with a boxing coach who claims to be her boyfriend. Can this sticky situation turn into real love?",
+    "overview_ar": "تفقد مدّعية عامة طموحة ذاكرتها، وتنتقل للعيش مع مدرب ملاكمة يدّعي أنه حبيبها. فهل يمكن أن يتحول هذا الوضع الحرج إلى حب حقيقي؟",
+    "poster_original": "https://image.tmdb.org/t/p/original/tSZ4aFpTGc8Oj52SuzPUUZ7WKL0.jpg",
+    "poster_w780": "https://image.tmdb.org/t/p/w780/tSZ4aFpTGc8Oj52SuzPUUZ7WKL0.jpg",
+    "cimaly_url": "https://cimaly.cc/tv/291496"
+  },
+  "afternoon_anime": {
+    "tmdb_id": 283428,
+    "type": "tv",
+    "year_date": "2026-04-02",
+    "popularity": 91.6521,
+    "vote_average": 8.5,
+    "vote_count": 49,
+    "origin_country": [
+      "JP"
+    ],
+    "original_language": "ja",
+    "title_en": "The Ramparts of Ice",
+    "title_ar": "",
+    "overview_en": "Weighed down by memories she can't shake, high schooler Koyuki Hikawa keeps everyone at arm's length — until three schoolmates draw her out of her shell.",
+    "overview_ar": "تثقل كاهل الطالبة الثانوية كويوكي هيكاوا ذكريات لا تستطيع نسيانها، فتبقي الجميع على مسافة منها - إلى أن يقوم ثلاثة من زملائها في المدرسة بإخراجها من عزلتها.",
+    "poster_original": "https://image.tmdb.org/t/p/original/rke9UC2QrogvxiQD9TGpbvqDosi.jpg",
+    "poster_w780": "https://image.tmdb.org/t/p/w780/rke9UC2QrogvxiQD9TGpbvqDosi.jpg",
+    "cimaly_url": "https://cimaly.cc/tv/283428"
+  },
+  "evening_movie": {
+    "tmdb_id": 969681,
+    "type": "movie",
+    "year_date": "2026-07-29",
+    "popularity": 1831.2906,
+    "vote_average": 7.877,
+    "vote_count": 1856,
+    "origin_country": [
+      "US"
+    ],
+    "original_language": "en",
+    "title_en": "Spider-Man: Brand New Day",
+    "title_ar": "سبايدر-مان: يوم جديد",
+    "overview_en": "Fighting crime full-time as Spider-Man in a world that doesn't remember him—and the pressure of seeing his old friends move on without him—sparks a change in Peter Parker he may not have the power to control. But that transformation might also be the only thing that can stop a shocking new threat to the city and those he loves - a powerful villain no one can even see.",
+    "overview_ar": "بينما يواصل \"بيتر باركر\" حماية المدينة بصفته \"الرجل العنكبوت\" في عالمٍ لم يعد يتذكره أحد، يجد نفسه وحيدًا وهو يشاهد أصدقاءه القدامى يمضون في حياتهم من دونه. ومع تصاعد الضغوط، يبدأ بالتغير بطريقة قد تعجز قواه عن كبحها. لكن هذا التحول قد يكون أمله الوحيد لمواجهة تهديدٍ غامض وخطير يلوح في الأفق، عدو يمتلك قوة مرعبة لا يستطيع أحد حتى رؤيته، ويهدد المدينة وكل من يهتم \"بيتر\" لأمرهم.",
+    "poster_original": "https://image.tmdb.org/t/p/original/iPOn6DinuVyLY17YM9mKuPofV08.jpg",
+    "poster_w780": "https://image.tmdb.org/t/p/w780/iPOn6DinuVyLY17YM9mKuPofV08.jpg",
+    "cimaly_url": "https://cimaly.cc/movie/969681"
+  }
+}

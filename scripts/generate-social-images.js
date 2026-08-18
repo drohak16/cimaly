@@ -467,4 +467,287 @@ function arabicBranding(slot) {
 
     <!-- Arabic CTA -->
     <rect
-      x="
+      x="190"
+      y="1238"
+      width="700"
+      height="72"
+      rx="20"
+      fill="#080808"
+      fill-opacity="0.82"
+      stroke="#d8c18e"
+      stroke-width="2"
+    />
+
+    <text
+      x="540"
+      y="1285"
+      text-anchor="middle"
+      direction="rtl"
+      font-family="DejaVu Sans, Arial, sans-serif"
+      font-size="28"
+      fill="#ffffff"
+    >
+      شاهد الآن على
+      <tspan
+        direction="ltr"
+        fill="#ef1717"
+        font-weight="800"
+      > cimaly.cc</tspan>
+    </text>
+  </svg>`;
+}
+
+/* =========================
+   IMAGE CREATION
+========================= */
+
+async function createBrandedImage(
+  posterUrl,
+  overlay,
+  output
+) {
+  const poster =
+    await downloadImage(posterUrl);
+
+  /*
+    contain instead of aggressive crop.
+
+    Background is a blurred version of the
+    same artwork, then the official poster
+    is fitted on top.
+
+    This protects the original poster's
+    composition and title.
+  */
+
+  const background =
+    await sharp(poster)
+      .resize(WIDTH, HEIGHT, {
+        fit: "cover",
+        position: "centre"
+      })
+      .blur(18)
+      .modulate({
+        brightness: 0.55
+      })
+      .jpeg({
+        quality: 85
+      })
+      .toBuffer();
+
+  const foreground =
+    await sharp(poster)
+      .resize(WIDTH, HEIGHT, {
+        fit: "contain",
+        position: "centre",
+        background: {
+          r: 0,
+          g: 0,
+          b: 0,
+          alpha: 0
+        }
+      })
+      .png()
+      .toBuffer();
+
+  await sharp(background)
+    .composite([
+      {
+        input: foreground,
+        top: 0,
+        left: 0
+      },
+      {
+        input: Buffer.from(overlay),
+        top: 0,
+        left: 0
+      }
+    ])
+    .jpeg({
+      quality: 94,
+      chromaSubsampling: "4:4:4"
+    })
+    .toFile(output);
+}
+
+/* =========================
+   CONTENT
+========================= */
+
+async function generateContent(
+  slot,
+  content,
+  directory
+) {
+  console.log("");
+  console.log(
+    `🎨 ${slot}: ${content.title_en}`
+  );
+
+  const posters =
+    await getOfficialPosters(content);
+
+  console.log(
+    `EN official poster: ${
+      posters.hasEnglishOfficial
+        ? "YES"
+        : "NO — fallback"
+    }`
+  );
+
+  console.log(
+    `AR official poster: ${
+      posters.hasArabicOfficial
+        ? "YES"
+        : "NO — original/fallback"
+    }`
+  );
+
+  const slug =
+    sanitizeFilename(
+      content.title_en
+    ) ||
+    String(content.tmdb_id);
+
+  const enFilename =
+    `${slot}-${slug}-en.jpg`;
+
+  const arFilename =
+    `${slot}-${slug}-ar.jpg`;
+
+  const enOutput =
+    path.join(
+      directory,
+      enFilename
+    );
+
+  const arOutput =
+    path.join(
+      directory,
+      arFilename
+    );
+
+  await createBrandedImage(
+    posters.english,
+    englishBranding(slot),
+    enOutput
+  );
+
+  await createBrandedImage(
+    posters.arabic,
+    arabicBranding(slot),
+    arOutput
+  );
+
+  return {
+    english: {
+      file: enOutput,
+      url:
+        `https://cimaly.cc/social/${todayStr()}/${enFilename}`,
+      official_poster:
+        posters.hasEnglishOfficial
+    },
+
+    arabic: {
+      file: arOutput,
+      url:
+        `https://cimaly.cc/social/${todayStr()}/${arFilename}`,
+      official_poster:
+        posters.hasArabicOfficial
+    }
+  };
+}
+
+/* =========================
+   MAIN
+========================= */
+
+async function main() {
+  if (
+    !fs.existsSync(
+      SELECTION_FILE
+    )
+  ) {
+    throw new Error(
+      "data/last-social-selection.json not found"
+    );
+  }
+
+  const selection =
+    JSON.parse(
+      fs.readFileSync(
+        SELECTION_FILE,
+        "utf8"
+      )
+    );
+
+  const directory =
+    path.join(
+      OUTPUT_ROOT,
+      todayStr()
+    );
+
+  fs.mkdirSync(
+    directory,
+    {
+      recursive: true
+    }
+  );
+
+  const manifest = {};
+
+  for (
+    const [slot, content]
+    of Object.entries(selection)
+  ) {
+    manifest[slot] =
+      await generateContent(
+        slot,
+        content,
+        directory
+      );
+  }
+
+  fs.writeFileSync(
+    path.join(
+      directory,
+      "manifest.json"
+    ),
+    JSON.stringify(
+      manifest,
+      null,
+      2
+    ) + "\n"
+  );
+
+  console.log("");
+  console.log(
+    "✅ CIMALY VISUALS GENERATED"
+  );
+
+  console.log(
+    "✅ Original poster typography preserved."
+  );
+
+  console.log(
+    "✅ Arabic official posters used whenever TMDB provides them."
+  );
+
+  console.log(
+    "✅ No movie/series/anime title was recreated by Cimaly."
+  );
+
+  console.log("");
+  console.log(
+    "⚠️ BUFFER PUBLISHING IS STILL OFF."
+  );
+}
+
+main().catch(error => {
+  console.error(
+    "❌",
+    error
+  );
+
+  process.exit(1);
+});

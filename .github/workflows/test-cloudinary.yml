@@ -1,0 +1,44 @@
+name: Test Cloudinary Connection
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-cloudinary:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Cloudinary SDK
+        run: npm install cloudinary
+
+      - name: Test Cloudinary connection
+        env:
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+          CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+        run: |
+          node - <<'NODE'
+          const cloudinary = require("cloudinary").v2;
+
+          cloudinary.config({
+            cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+            api_key: process.env.CLOUDINARY_API_KEY,
+            api_secret: process.env.CLOUDINARY_API_SECRET
+          });
+
+          cloudinary.api.ping()
+            .then(result => {
+              console.log("✅ Cloudinary connection successful");
+              console.log(result);
+            })
+            .catch(error => {
+              console.error("❌ Cloudinary connection failed");
+              console.error(error.message);
+              process.exit(1);
+            });
+          NODE

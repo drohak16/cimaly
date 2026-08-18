@@ -14,26 +14,17 @@ const SELECTION_FILE =
 const OUTPUT_ROOT =
   path.resolve("public/social");
 
-// Instagram portrait 4:5
 const WIDTH = 1080;
 const HEIGHT = 1350;
-
-// IMPORTANT:
-// Les éléments Cimaly ne sont plus posés sur l'affiche.
-// On réserve une zone au-dessus et en dessous.
-const TOP_AREA = 175;
-const BOTTOM_AREA = 115;
-const POSTER_AREA_HEIGHT =
-  HEIGHT - TOP_AREA - BOTTOM_AREA;
 
 const headers = {
   Authorization: `Bearer ${TMDB_TOKEN}`,
   accept: "application/json"
 };
 
-/* ========================================
+/* =========================
    UTILS
-======================================== */
+========================= */
 
 function todayStr() {
   return new Date()
@@ -119,13 +110,10 @@ function imageUrl(filePath) {
     : "";
 }
 
-/* ========================================
-   POSTER SELECTION
-
-   IMPORTANT:
-   EN + AR utilisent maintenant EXACTEMENT
-   le même poster de base.
-======================================== */
+/* =========================
+   POSTER
+   SAME BASE FOR EN + AR
+========================= */
 
 function posterScore(poster) {
   return (
@@ -135,10 +123,7 @@ function posterScore(poster) {
   );
 }
 
-function bestPosterByLanguage(
-  posters,
-  language
-) {
+function bestPoster(posters, language) {
   const matches =
     posters.filter(
       p =>
@@ -149,12 +134,11 @@ function bestPosterByLanguage(
     return null;
   }
 
-  return [...matches]
-    .sort(
-      (a, b) =>
-        posterScore(b) -
-        posterScore(a)
-    )[0];
+  return [...matches].sort(
+    (a, b) =>
+      posterScore(b) -
+      posterScore(a)
+  )[0];
 }
 
 function bestNeutralPoster(posters) {
@@ -168,12 +152,11 @@ function bestNeutralPoster(posters) {
     return null;
   }
 
-  return [...matches]
-    .sort(
-      (a, b) =>
-        posterScore(b) -
-        posterScore(a)
-    )[0];
+  return [...matches].sort(
+    (a, b) =>
+      posterScore(b) -
+      posterScore(a)
+  )[0];
 }
 
 function bestAnyPoster(posters) {
@@ -181,12 +164,11 @@ function bestAnyPoster(posters) {
     return null;
   }
 
-  return [...posters]
-    .sort(
-      (a, b) =>
-        posterScore(b) -
-        posterScore(a)
-    )[0];
+  return [...posters].sort(
+    (a, b) =>
+      posterScore(b) -
+      posterScore(a)
+  )[0];
 }
 
 async function getBasePoster(content) {
@@ -204,14 +186,8 @@ async function getBasePoster(content) {
   const posters =
     data.posters || [];
 
-  // PRIORITÉ :
-  // 1 English officiel
-  // 2 poster neutre
-  // 3 poster déjà sélectionné
-  // 4 meilleur poster disponible
-
   const english =
-    bestPosterByLanguage(
+    bestPoster(
       posters,
       "en"
     );
@@ -256,11 +232,9 @@ async function getBasePoster(content) {
   };
 }
 
-/* ========================================
+/* =========================
    ARABIC TITLE
-
-   On cherche plus loin que ar-SA.
-======================================== */
+========================= */
 
 async function getArabicTitle(content) {
   if (
@@ -282,8 +256,8 @@ async function getArabicTitle(content) {
     const arabic =
       (data.translations || [])
         .find(
-          translation =>
-            translation.iso_639_1 === "ar"
+          t =>
+            t.iso_639_1 === "ar"
         );
 
     const candidate =
@@ -299,19 +273,17 @@ async function getArabicTitle(content) {
     }
   } catch (error) {
     console.log(
-      "Arabic translation lookup failed:",
+      "Arabic title lookup failed:",
       error.message
     );
   }
 
-  // Dernier fallback :
-  // on ne fabrique pas un faux titre arabe.
   return "";
 }
 
-/* ========================================
+/* =========================
    LABELS
-======================================== */
+========================= */
 
 function categoryLabel(
   slot,
@@ -348,19 +320,61 @@ function categoryLabel(
   return "MOVIE PICK";
 }
 
-/* ========================================
-   TOP HEADER
+/* =========================
+   SAFE TITLE WRAPPING
+========================= */
 
-   Cette zone est HORS poster.
-   Elle ne peut donc plus couvrir un titre.
-======================================== */
+function splitArabicTitle(
+  title,
+  maxChars = 24
+) {
+  if (!title) {
+    return [];
+  }
 
-function topHeader(
+  const words =
+    title.split(/\s+/);
+
+  const lines = [];
+  let current = "";
+
+  for (const word of words) {
+    const test =
+      current
+        ? `${current} ${word}`
+        : word;
+
+    if (
+      test.length >
+      maxChars
+    ) {
+      if (current) {
+        lines.push(current);
+      }
+
+      current = word;
+    } else {
+      current = test;
+    }
+  }
+
+  if (current) {
+    lines.push(current);
+  }
+
+  return lines.slice(0, 2);
+}
+
+/* =========================
+   OVERLAY
+========================= */
+
+function createOverlay({
   slot,
   language,
-  arabicTitle = ""
-) {
-  const label =
+  arabicTitle
+}) {
+  const category =
     escapeXml(
       categoryLabel(
         slot,
@@ -368,257 +382,250 @@ function topHeader(
       )
     );
 
-  if (
-    language === "ar"
-  ) {
-    const safeTitle =
-      escapeXml(
-        arabicTitle
-      );
+  const isArabic =
+    language === "ar";
 
-    return `
-    <svg
-      width="${WIDTH}"
-      height="${TOP_AREA}"
-      xmlns="http://www.w3.org/2000/svg"
-    >
+  const arabicLines =
+    isArabic
+      ? splitArabicTitle(
+          arabicTitle,
+          24
+        )
+      : [];
 
-      <rect
-        width="${WIDTH}"
-        height="${TOP_AREA}"
-        fill="#090909"
-      />
+  const titleBlock =
+    isArabic &&
+    arabicLines.length
+      ? `
+        <rect
+          x="120"
+          y="150"
+          width="840"
+          height="${
+            arabicLines.length === 1
+              ? 74
+              : 118
+          }"
+          rx="24"
+          fill="#000"
+          fill-opacity="0.28"
+        />
 
-      <rect
-        x="510"
-        y="17"
-        width="60"
-        height="60"
-        rx="13"
-        fill="#ef1717"
-      />
-
-      <text
-        x="540"
-        y="62"
-        text-anchor="middle"
-        font-family="Arial, sans-serif"
-        font-size="42"
-        font-weight="900"
-        fill="#ffffff"
-      >C</text>
-
-      <text
-        x="540"
-        y="105"
-        text-anchor="middle"
-        direction="rtl"
-        font-family="DejaVu Sans, Arial, sans-serif"
-        font-size="20"
-        fill="#cfcfcf"
-      >${label}</text>
-
-      ${
-        safeTitle
-          ? `
+        ${arabicLines.map(
+          (line, index) => `
           <text
             x="540"
-            y="148"
+            y="${195 + index * 46}"
             text-anchor="middle"
             direction="rtl"
             font-family="DejaVu Sans, Arial, sans-serif"
-            font-size="31"
-            font-weight="700"
+            font-size="${
+              arabicLines.length === 1
+                ? 43
+                : 38
+            }"
+            font-weight="800"
             fill="#ffffff"
-          >${safeTitle}</text>
-          `
-          : ""
-      }
-
-    </svg>`;
-  }
+            stroke="#000000"
+            stroke-opacity="0.22"
+            stroke-width="1"
+          >${escapeXml(line)}</text>
+        `
+        ).join("")}
+      `
+      : "";
 
   return `
   <svg
     width="${WIDTH}"
-    height="${TOP_AREA}"
+    height="${HEIGHT}"
     xmlns="http://www.w3.org/2000/svg"
   >
 
-    <rect
-      width="${WIDTH}"
-      height="${TOP_AREA}"
-      fill="#090909"
-    />
+    <defs>
+      <linearGradient
+        id="bottomFade"
+        x1="0"
+        y1="0"
+        x2="0"
+        y2="1"
+      >
+        <stop
+          offset="0%"
+          stop-color="#000"
+          stop-opacity="0"
+        />
 
+        <stop
+          offset="100%"
+          stop-color="#000"
+          stop-opacity="0.62"
+        />
+      </linearGradient>
+    </defs>
+
+    <!-- CIMALY LOGO -->
     <rect
-      x="510"
-      y="25"
-      width="60"
-      height="60"
-      rx="13"
+      x="506"
+      y="34"
+      width="68"
+      height="68"
+      rx="16"
       fill="#ef1717"
     />
 
     <text
       x="540"
-      y="70"
+      y="84"
       text-anchor="middle"
       font-family="Arial, sans-serif"
-      font-size="42"
+      font-size="47"
       font-weight="900"
       fill="#ffffff"
     >C</text>
 
-    <text
-      x="540"
-      y="126"
-      text-anchor="middle"
-      font-family="Arial, sans-serif"
-      font-size="20"
-      font-weight="600"
-      letter-spacing="4"
-      fill="#d9d9d9"
-    >${label}</text>
-
-  </svg>`;
-}
-
-/* ========================================
-   BOTTOM CTA
-
-   Aussi HORS poster.
-   Donc plus de sous-titre couvert.
-======================================== */
-
-function bottomCTA(language) {
-  if (
-    language === "ar"
-  ) {
-    return `
-    <svg
-      width="${WIDTH}"
-      height="${BOTTOM_AREA}"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-
-      <rect
-        width="${WIDTH}"
-        height="${BOTTOM_AREA}"
-        fill="#090909"
-      />
-
-      <rect
-        x="190"
-        y="21"
-        width="700"
-        height="70"
-        rx="18"
-        fill="#111111"
-        stroke="#cbb98d"
-        stroke-width="2"
-      />
-
-      <text
-        x="540"
-        y="66"
-        text-anchor="middle"
-        direction="rtl"
-        font-family="DejaVu Sans, Arial, sans-serif"
-        font-size="27"
-        fill="#ffffff"
-      >
-        شاهد الآن على
-        <tspan
-          direction="ltr"
-          fill="#ef1717"
-          font-weight="800"
-        > cimaly.cc</tspan>
-      </text>
-
-    </svg>`;
-  }
-
-  return `
-  <svg
-    width="${WIDTH}"
-    height="${BOTTOM_AREA}"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-
+    <!-- CATEGORY -->
     <rect
-      width="${WIDTH}"
-      height="${BOTTOM_AREA}"
-      fill="#090909"
+      x="425"
+      y="111"
+      width="230"
+      height="42"
+      rx="21"
+      fill="#000000"
+      fill-opacity="0.34"
     />
 
+    <text
+      x="540"
+      y="139"
+      text-anchor="middle"
+      ${
+        isArabic
+          ? 'direction="rtl"'
+          : ""
+      }
+      font-family="${
+        isArabic
+          ? "DejaVu Sans, Arial, sans-serif"
+          : "Arial, sans-serif"
+      }"
+      font-size="19"
+      font-weight="600"
+      ${
+        isArabic
+          ? ""
+          : 'letter-spacing="3"'
+      }
+      fill="#ffffff"
+    >${category}</text>
+
+    ${titleBlock}
+
+    <!-- SUBTLE BOTTOM FADE -->
     <rect
-      x="190"
-      y="21"
-      width="700"
+      x="0"
+      y="1090"
+      width="${WIDTH}"
+      height="260"
+      fill="url(#bottomFade)"
+    />
+
+    <!-- CTA -->
+    <rect
+      x="185"
+      y="1242"
+      width="710"
       height="70"
-      rx="18"
-      fill="#111111"
-      stroke="#cbb98d"
+      rx="22"
+      fill="#090909"
+      fill-opacity="0.78"
+      stroke="#d4bf8f"
       stroke-width="2"
     />
 
-    <text
-      x="540"
-      y="66"
-      text-anchor="middle"
-      font-family="Arial, sans-serif"
-      font-size="26"
-      fill="#ffffff"
-    >
-      Watch now on
-      <tspan
-        fill="#ef1717"
-        font-weight="800"
-      > cimaly.cc</tspan>
-    </text>
+    ${
+      isArabic
+        ? `
+        <text
+          x="540"
+          y="1287"
+          text-anchor="middle"
+          direction="rtl"
+          font-family="DejaVu Sans, Arial, sans-serif"
+          font-size="27"
+          fill="#ffffff"
+        >
+          شاهد الآن على
+          <tspan
+            direction="ltr"
+            fill="#ef1717"
+            font-weight="800"
+          > cimaly.cc</tspan>
+        </text>
+        `
+        : `
+        <text
+          x="540"
+          y="1287"
+          text-anchor="middle"
+          font-family="Arial, sans-serif"
+          font-size="27"
+          fill="#ffffff"
+        >
+          Watch now on
+          <tspan
+            fill="#ef1717"
+            font-weight="800"
+          > cimaly.cc</tspan>
+        </text>
+        `
+    }
 
   </svg>`;
 }
 
-/* ========================================
-   POSTER AREA
+/* =========================
+   CREATE IMAGE
+========================= */
 
-   Le poster complet est conservé.
-   Aucun overlay Cimaly dessus.
-======================================== */
+async function createImage({
+  posterUrl,
+  slot,
+  language,
+  arabicTitle,
+  output
+}) {
+  const poster =
+    await downloadImage(
+      posterUrl
+    );
 
-async function buildPosterArea(
-  posterBuffer
-) {
+  // full frame
   const background =
-    await sharp(
-      posterBuffer
-    )
+    await sharp(poster)
       .resize(
         WIDTH,
-        POSTER_AREA_HEIGHT,
+        HEIGHT,
         {
           fit: "cover",
           position: "centre"
         }
       )
-      .blur(20)
+      .blur(22)
       .modulate({
-        brightness: 0.40
+        brightness: 0.62
       })
       .jpeg({
-        quality: 85
+        quality: 86
       })
       .toBuffer();
 
+  // preserve the whole official poster
   const foreground =
-    await sharp(
-      posterBuffer
-    )
+    await sharp(poster)
       .resize(
         WIDTH,
-        POSTER_AREA_HEIGHT,
+        HEIGHT,
         {
           fit: "contain",
           position: "centre",
@@ -633,91 +640,27 @@ async function buildPosterArea(
       .png()
       .toBuffer();
 
-  return sharp(background)
-    .composite([
-      {
-        input: foreground,
-        top: 0,
-        left: 0
-      }
-    ])
-    .jpeg({
-      quality: 94
-    })
-    .toBuffer();
-}
-
-/* ========================================
-   FINAL IMAGE
-======================================== */
-
-async function createImage({
-  posterUrl,
-  language,
-  slot,
-  arabicTitle,
-  output
-}) {
-  const posterBuffer =
-    await downloadImage(
-      posterUrl
-    );
-
-  const posterArea =
-    await buildPosterArea(
-      posterBuffer
-    );
-
-  const header =
+  const overlay =
     Buffer.from(
-      topHeader(
+      createOverlay({
         slot,
         language,
         arabicTitle
-      )
+      })
     );
 
-  const footer =
-    Buffer.from(
-      bottomCTA(
-        language
-      )
-    );
-
-  const headerImage =
-    await sharp(header)
-      .png()
-      .toBuffer();
-
-  const footerImage =
-    await sharp(footer)
-      .png()
-      .toBuffer();
-
-  await sharp({
-    create: {
-      width: WIDTH,
-      height: HEIGHT,
-      channels: 3,
-      background: "#090909"
-    }
-  })
+  await sharp(background)
     .composite([
       {
-        input: headerImage,
+        input:
+          foreground,
         top: 0,
         left: 0
       },
       {
-        input: posterArea,
-        top: TOP_AREA,
-        left: 0
-      },
-      {
-        input: footerImage,
-        top:
-          HEIGHT -
-          BOTTOM_AREA,
+        input:
+          overlay,
+        top: 0,
         left: 0
       }
     ])
@@ -729,9 +672,9 @@ async function createImage({
     .toFile(output);
 }
 
-/* ========================================
-   GENERATE ONE CONTENT
-======================================== */
+/* =========================
+   GENERATE
+========================= */
 
 async function generateContent(
   slot,
@@ -764,7 +707,7 @@ async function generateContent(
   console.log(
     arabicTitle
       ? `Arabic title: ${arabicTitle}`
-      : "Arabic title: NOT AVAILABLE"
+      : "Arabic title: not available"
   );
 
   const slug =
@@ -797,10 +740,10 @@ async function generateContent(
     posterUrl:
       basePoster.url,
 
+    slot,
+
     language:
       "en",
-
-    slot,
 
     arabicTitle:
       "",
@@ -813,10 +756,10 @@ async function generateContent(
     posterUrl:
       basePoster.url,
 
+    slot,
+
     language:
       "ar",
-
-    slot,
 
     arabicTitle,
 
@@ -849,9 +792,9 @@ async function generateContent(
   };
 }
 
-/* ========================================
+/* =========================
    MAIN
-======================================== */
+========================= */
 
 async function main() {
   if (
@@ -919,19 +862,23 @@ async function main() {
   );
 
   console.log(
-    "✅ EN + AR use the same poster."
+    "✅ Full-frame poster preserved."
   );
 
   console.log(
-    "✅ Cimaly header does not cover poster titles."
+    "✅ Same poster used for EN and AR."
   );
 
   console.log(
-    "✅ CTA does not cover poster subtitles."
+    "✅ Arabic title added when available."
   );
 
   console.log(
-    "✅ Arabic title added outside poster when available."
+    "✅ Watch now on cimaly.cc added."
+  );
+
+  console.log(
+    "✅ No black header/footer bands."
   );
 
   console.log("");

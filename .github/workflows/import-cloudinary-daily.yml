@@ -1,0 +1,45 @@
+name: Import Cimaly Daily Images
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  import-daily:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Cloudinary SDK
+        run: npm install cloudinary --no-save
+
+      - name: Import daily images from Cloudinary
+        env:
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+          CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+        run: node scripts/import-cloudinary-daily.js
+
+      - name: Commit daily images
+        run: |
+          git config user.name "cimaly-cloudinary-bot"
+          git config user.email "actions@github.com"
+
+          git add public/social
+
+          if git diff --cached --quiet; then
+            echo "No new daily images to commit"
+            exit 0
+          fi
+
+          git commit -m "Import Cimaly daily social images"
+          git push

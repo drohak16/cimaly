@@ -48,5 +48,5 @@ jobs:
             exit 0
           fi
 
-          git commit -m "Generate Cimaly social visuals"
+          git commit -m "Generate corrected Cimaly social visuals"
           git push

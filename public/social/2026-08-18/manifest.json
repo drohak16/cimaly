@@ -1,38 +1,35 @@
 {
-  "morning_series": {
-    "english": {
-      "file": "/home/runner/work/cimaly/cimaly/public/social/2026-08-18/morning_series-lanterns-en.jpg",
-      "url": "https://cimaly.cc/social/2026-08-18/morning_series-lanterns-en.jpg"
+  "generator": "Sharp",
+  "date": "2026-08-18",
+  "buffer": false,
+  "design_version": "cimaly-smart-minimal-v1",
+  "generated": [
+    {
+      "category": "series",
+      "tmdb_id": 95350,
+      "title_en": "Lanterns",
+      "title_ar": "الفوانيس",
+      "poster": "https://image.tmdb.org/t/p/original/gpC7h43xPMEV3goYMQShfJbTtLq.jpg",
+      "english": "series-lanterns-en.jpg",
+      "arabic": "series-lanterns-ar.jpg"
     },
-    "arabic": {
-      "file": "/home/runner/work/cimaly/cimaly/public/social/2026-08-18/morning_series-lanterns-ar.jpg",
-      "url": "https://cimaly.cc/social/2026-08-18/morning_series-lanterns-ar.jpg"
+    {
+      "category": "anime",
+      "tmdb_id": 283428,
+      "title_en": "The Ramparts of Ice",
+      "title_ar": "",
+      "poster": "https://image.tmdb.org/t/p/original/rke9UC2QrogvxiQD9TGpbvqDosi.jpg",
+      "english": "anime-the-ramparts-of-ice-en.jpg",
+      "arabic": "anime-the-ramparts-of-ice-ar.jpg"
     },
-    "same_base_poster": true,
-    "arabic_title": "الفوانيس"
-  },
-  "afternoon_anime": {
-    "english": {
-      "file": "/home/runner/work/cimaly/cimaly/public/social/2026-08-18/afternoon_anime-the-ramparts-of-ice-en.jpg",
-      "url": "https://cimaly.cc/social/2026-08-18/afternoon_anime-the-ramparts-of-ice-en.jpg"
-    },
-    "arabic": {
-      "file": "/home/runner/work/cimaly/cimaly/public/social/2026-08-18/afternoon_anime-the-ramparts-of-ice-ar.jpg",
-      "url": "https://cimaly.cc/social/2026-08-18/afternoon_anime-the-ramparts-of-ice-ar.jpg"
-    },
-    "same_base_poster": true,
-    "arabic_title": ""
-  },
-  "evening_movie": {
-    "english": {
-      "file": "/home/runner/work/cimaly/cimaly/public/social/2026-08-18/evening_movie-spider-man-brand-new-day-en.jpg",
-      "url": "https://cimaly.cc/social/2026-08-18/evening_movie-spider-man-brand-new-day-en.jpg"
-    },
-    "arabic": {
-      "file": "/home/runner/work/cimaly/cimaly/public/social/2026-08-18/evening_movie-spider-man-brand-new-day-ar.jpg",
-      "url": "https://cimaly.cc/social/2026-08-18/evening_movie-spider-man-brand-new-day-ar.jpg"
-    },
-    "same_base_poster": true,
-    "arabic_title": "سبايدر-مان: يوم جديد"
-  }
+    {
+      "category": "movie",
+      "tmdb_id": 969681,
+      "title_en": "Spider-Man: Brand New Day",
+      "title_ar": "سبايدر-مان: يوم جديد",
+      "poster": "https://image.tmdb.org/t/p/original/iPOn6DinuVyLY17YM9mKuPofV08.jpg",
+      "english": "movie-spider-man-brand-new-day-en.jpg",
+      "arabic": "movie-spider-man-brand-new-day-ar.jpg"
+    }
+  ]
 }

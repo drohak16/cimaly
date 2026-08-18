@@ -1,0 +1,32 @@
+{
+  "morning_series": {
+    "english": {
+      "file": "/home/runner/work/cimaly/cimaly/public/social/2026-08-18/morning_series-lanterns-en.jpg",
+      "url": "https://cimaly.cc/social/2026-08-18/morning_series-lanterns-en.jpg"
+    },
+    "arabic": {
+      "file": "/home/runner/work/cimaly/cimaly/public/social/2026-08-18/morning_series-lanterns-ar.jpg",
+      "url": "https://cimaly.cc/social/2026-08-18/morning_series-lanterns-ar.jpg"
+    }
+  },
+  "afternoon_anime": {
+    "english": {
+      "file": "/home/runner/work/cimaly/cimaly/public/social/2026-08-18/afternoon_anime-the-ramparts-of-ice-en.jpg",
+      "url": "https://cimaly.cc/social/2026-08-18/afternoon_anime-the-ramparts-of-ice-en.jpg"
+    },
+    "arabic": {
+      "file": "/home/runner/work/cimaly/cimaly/public/social/2026-08-18/afternoon_anime-the-ramparts-of-ice-ar.jpg",
+      "url": "https://cimaly.cc/social/2026-08-18/afternoon_anime-the-ramparts-of-ice-ar.jpg"
+    }
+  },
+  "evening_movie": {
+    "english": {
+      "file": "/home/runner/work/cimaly/cimaly/public/social/2026-08-18/evening_movie-spider-man-brand-new-day-en.jpg",
+      "url": "https://cimaly.cc/social/2026-08-18/evening_movie-spider-man-brand-new-day-en.jpg"
+    },
+    "arabic": {
+      "file": "/home/runner/work/cimaly/cimaly/public/social/2026-08-18/evening_movie-spider-man-brand-new-day-ar.jpg",
+      "url": "https://cimaly.cc/social/2026-08-18/evening_movie-spider-man-brand-new-day-ar.jpg"
+    }
+  }
+}

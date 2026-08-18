@@ -1,22 +1,22 @@
 {
   "morning_series": {
-    "tmdb_id": 291496,
+    "tmdb_id": 95350,
     "type": "tv",
-    "year_date": "2026-08-07",
-    "popularity": 124.6849,
-    "vote_average": 8.523,
-    "vote_count": 44,
+    "year_date": "2026-08-16",
+    "popularity": 269.2111,
+    "vote_average": 7.86,
+    "vote_count": 68,
     "origin_country": [
-      "KR"
+      "US"
     ],
-    "original_language": "ko",
-    "title_en": "Our Sticky Love",
-    "title_ar": "حب كحلوى التوفي",
-    "overview_en": "An ambitious prosecutor loses her memory and moves in with a boxing coach who claims to be her boyfriend. Can this sticky situation turn into real love?",
-    "overview_ar": "تفقد مدّعية عامة طموحة ذاكرتها، وتنتقل للعيش مع مدرب ملاكمة يدّعي أنه حبيبها. فهل يمكن أن يتحول هذا الوضع الحرج إلى حب حقيقي؟",
-    "poster_original": "https://image.tmdb.org/t/p/original/tSZ4aFpTGc8Oj52SuzPUUZ7WKL0.jpg",
-    "poster_w780": "https://image.tmdb.org/t/p/w780/tSZ4aFpTGc8Oj52SuzPUUZ7WKL0.jpg",
-    "cimaly_url": "https://cimaly.cc/tv/291496"
+    "original_language": "en",
+    "title_en": "Lanterns",
+    "title_ar": "الفوانيس",
+    "overview_en": "Two intergalactic cops, new recruit John Stewart and Lantern legend Hal Jordan, are drawn into a dark, Earth-based mystery as they investigate a murder in the American heartland.",
+    "overview_ar": "شرطيان من شرطة الفضاء، المجند الجديد \"جون ستيوارت\" والأسطورة \"هال جوردان\" من فيلق الفوانيس، يجدان نفسيهما متورطين في لغز غامض على الأرض، أثناء تحقيقهما في جريمة قتل وقعت في قلب الولايات المتحدة.",
+    "poster_original": "https://image.tmdb.org/t/p/original/rb94rKVIzLyfWufIN7WqLvadBDH.jpg",
+    "poster_w780": "https://image.tmdb.org/t/p/w780/rb94rKVIzLyfWufIN7WqLvadBDH.jpg",
+    "cimaly_url": "https://cimaly.cc/tv/95350"
   },
   "afternoon_anime": {
     "tmdb_id": 283428,

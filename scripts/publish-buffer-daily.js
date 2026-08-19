@@ -4,9 +4,9 @@ const REQUIRED = [
   "BUFFER_API_KEY",
   "BUFFER_CHANNEL_ID_FACEBOOK",
   "BUFFER_CHANNEL_ID_INSTAGRAM",
-  "CLOUDINARY_CLOUD_NAME",
-  "CLOUDINARY_API_KEY",
-  "CLOUDINARY_API_SECRET",
+  "SUPABASE_URL",
+  "SUPABASE_SECRET_KEY",
+  "SUPABASE_BUCKET",
 ];
 
 for (const key of REQUIRED) {
@@ -17,21 +17,12 @@ for (const key of REQUIRED) {
 
 const cfg = {
   bufferApiKey: process.env.BUFFER_API_KEY,
+  facebookChannelId: process.env.BUFFER_CHANNEL_ID_FACEBOOK,
+  instagramChannelId: process.env.BUFFER_CHANNEL_ID_INSTAGRAM,
 
-  facebookChannelId:
-    process.env.BUFFER_CHANNEL_ID_FACEBOOK,
-
-  instagramChannelId:
-    process.env.BUFFER_CHANNEL_ID_INSTAGRAM,
-
-  cloudName:
-    process.env.CLOUDINARY_CLOUD_NAME,
-
-  cloudinaryApiKey:
-    process.env.CLOUDINARY_API_KEY,
-
-  cloudinaryApiSecret:
-    process.env.CLOUDINARY_API_SECRET,
+  supabaseUrl: process.env.SUPABASE_URL,
+  supabaseSecretKey: process.env.SUPABASE_SECRET_KEY,
+  supabaseBucket: process.env.SUPABASE_BUCKET,
 };
 
 const DAILY_ITEMS = [
@@ -43,7 +34,6 @@ const DAILY_ITEMS = [
     en: "Series pick",
     ar: "اختيار مسلسل",
   },
-
   {
     key: "anime",
     hour: 16,
@@ -52,7 +42,6 @@ const DAILY_ITEMS = [
     en: "Anime pick",
     ar: "اختيار أنمي",
   },
-
   {
     key: "movie",
     hour: 20,
@@ -66,47 +55,27 @@ const DAILY_ITEMS = [
 function getIstanbulSchedule(hour, minute) {
   const now = new Date();
 
-  const parts =
-    new Intl.DateTimeFormat("en-CA", {
-      timeZone: "Europe/Istanbul",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).formatToParts(now);
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Istanbul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
 
   const get = (type) =>
-    parts.find(
-      (part) => part.type === type
-    )?.value;
+    parts.find((part) => part.type === type)?.value;
 
   const year = Number(get("year"));
   const month = Number(get("month"));
   const day = Number(get("day"));
 
-  // Istanbul = UTC+3
   let due = new Date(
-    Date.UTC(
-      year,
-      month - 1,
-      day,
-      hour - 3,
-      minute,
-      0
-    )
+    Date.UTC(year, month - 1, day, hour - 3, minute, 0)
   );
 
-  // Si l'heure est déjà passée aujourd'hui,
-  // programmer pour demain.
   if (due <= now) {
     due = new Date(
-      Date.UTC(
-        year,
-        month - 1,
-        day + 1,
-        hour - 3,
-        minute,
-        0
-      )
+      Date.UTC(year, month - 1, day + 1, hour - 3, minute, 0)
     );
   }
 
@@ -121,28 +90,18 @@ Watch now on cimaly.cc
 شاهد الآن على cimaly.cc`;
 }
 
-async function getCloudinaryAsset(
-  folder,
-  publicId
-) {
-  const auth = Buffer.from(
-    `${cfg.cloudinaryApiKey}:${cfg.cloudinaryApiSecret}`
-  ).toString("base64");
-
+async function createSignedUrl(path, expiresIn = 3600) {
   const response = await fetch(
-    `https://api.cloudinary.com/v1_1/${cfg.cloudName}/resources/search`,
+    `${cfg.supabaseUrl}/storage/v1/object/sign/${cfg.supabaseBucket}/${path}`,
     {
       method: "POST",
-
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Basic ${auth}`,
+        apikey: cfg.supabaseSecretKey,
+        Authorization: `Bearer ${cfg.supabaseSecretKey}`,
       },
-
       body: JSON.stringify({
-        expression:
-          `asset_folder="${folder}" AND public_id="${publicId}"`,
-        max_results: 1,
+        expiresIn,
       }),
     }
   );
@@ -151,13 +110,43 @@ async function getCloudinaryAsset(
 
   if (!response.ok) {
     throw new Error(
-      `Cloudinary error ${response.status}: ${JSON.stringify(
-        data
-      )}`
+      `Supabase signed URL error ${response.status}: ${JSON.stringify(data)}`
     );
   }
 
-  return data.resources?.[0] || null;
+  if (!data?.signedURL) {
+    throw new Error(
+      `Supabase did not return signedURL for path: ${path}`
+    );
+  }
+
+  return `${cfg.supabaseUrl}/storage/v1${data.signedURL}`;
+}
+
+async function checkFileExists(path) {
+  const response = await fetch(
+    `${cfg.supabaseUrl}/storage/v1/object/info/${cfg.supabaseBucket}/${path}`,
+    {
+      method: "GET",
+      headers: {
+        apikey: cfg.supabaseSecretKey,
+        Authorization: `Bearer ${cfg.supabaseSecretKey}`,
+      },
+    }
+  );
+
+  if (response.status === 404) {
+    return false;
+  }
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(
+      `Supabase file check error ${response.status}: ${text}`
+    );
+  }
+
+  return true;
 }
 
 async function createBufferPost({
@@ -183,9 +172,7 @@ async function createBufferPost({
       createPost(
         input: {
           text: ${JSON.stringify(text)}
-          channelId: ${JSON.stringify(
-            channelId
-          )}
+          channelId: ${JSON.stringify(channelId)}
           schedulingType: automatic
           mode: customScheduled
           dueAt: ${JSON.stringify(dueAt)}
@@ -198,7 +185,6 @@ async function createBufferPost({
             text
           }
         }
-
         ... on MutationError {
           message
         }
@@ -206,56 +192,39 @@ async function createBufferPost({
     }
   `;
 
-  const response = await fetch(
-    BUFFER_API_URL,
-    {
-      method: "POST",
-
-      headers: {
-        "Content-Type": "application/json",
-        Authorization:
-          `Bearer ${cfg.bufferApiKey}`,
-      },
-
-      body: JSON.stringify({
-        query,
-      }),
-    }
-  );
+  const response = await fetch(BUFFER_API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${cfg.bufferApiKey}`,
+    },
+    body: JSON.stringify({ query }),
+  });
 
   const data = await response.json();
 
   if (!response.ok) {
     throw new Error(
-      `Buffer HTTP error ${response.status}: ${JSON.stringify(
-        data
-      )}`
+      `Buffer HTTP error ${response.status}: ${JSON.stringify(data)}`
     );
   }
 
   if (data.errors?.length) {
     throw new Error(
-      `Buffer GraphQL error: ${JSON.stringify(
-        data.errors
-      )}`
+      `Buffer GraphQL error: ${JSON.stringify(data.errors)}`
     );
   }
 
-  const result =
-    data.data?.createPost;
+  const result = data.data?.createPost;
 
   if (!result) {
     throw new Error(
-      `Unexpected Buffer response: ${JSON.stringify(
-        data
-      )}`
+      `Unexpected Buffer response: ${JSON.stringify(data)}`
     );
   }
 
   if (result.message) {
-    throw new Error(
-      `Buffer error: ${result.message}`
-    );
+    throw new Error(`Buffer error: ${result.message}`);
   }
 
   return result.post;
@@ -263,183 +232,87 @@ async function createBufferPost({
 
 async function processItem(item) {
   console.log("");
-  console.log(
-    "================================"
-  );
-  console.log(
-    `Processing ${item.key}`
-  );
-  console.log(
-    "================================"
-  );
+  console.log("================================");
+  console.log(`Processing ${item.key}`);
+  console.log("================================");
 
-  // Ta structure Cloudinary actuelle :
-  //
-  // cimaly/social/daily/en/series
-  // cimaly/social/daily/en/anime
-  // cimaly/social/daily/en/movie
-  //
-  // cimaly/social/daily/ar/series
-  // cimaly/social/daily/ar/anime
-  // cimaly/social/daily/ar/movie
+  const pathEn = `daily/en/${item.key}.jpg`;
+  const pathAr = `daily/ar/${item.key}.jpg`;
 
-  const folderEn =
-    `cimaly/social/daily/en/${item.key}`;
+  console.log(`Checking EN file: ${pathEn}`);
+  console.log(`Checking AR file: ${pathAr}`);
 
-  const folderAr =
-    `cimaly/social/daily/ar/${item.key}`;
+  const [existsEn, existsAr] = await Promise.all([
+    checkFileExists(pathEn),
+    checkFileExists(pathAr),
+  ]);
 
-  console.log(
-    `Looking in EN folder: ${folderEn}`
-  );
-
-  console.log(
-    `Looking in AR folder: ${folderAr}`
-  );
-
-  const [assetEn, assetAr] =
-    await Promise.all([
-      getCloudinaryAsset(
-        folderEn,
-        item.key
-      ),
-
-      getCloudinaryAsset(
-        folderAr,
-        item.key
-      ),
-    ]);
-
-  /*
-    Sécurité :
-    si une image EN ou AR manque,
-    rien n'est envoyé à Buffer.
-  */
-
-  if (!assetEn || !assetAr) {
-    console.log(
-      `SKIPPING ${item.key}`
-    );
-
-    console.log(
-      `EN found: ${Boolean(assetEn)}`
-    );
-
-    console.log(
-      `AR found: ${Boolean(assetAr)}`
-    );
-
+  if (!existsEn || !existsAr) {
+    console.log(`SKIPPING ${item.key}`);
+    console.log(`EN exists: ${existsEn}`);
+    console.log(`AR exists: ${existsAr}`);
     return;
   }
 
-  console.log(
-    `EN image: ${assetEn.secure_url}`
-  );
+  const [signedEn, signedAr] = await Promise.all([
+    createSignedUrl(pathEn),
+    createSignedUrl(pathAr),
+  ]);
 
-  console.log(
-    `AR image: ${assetAr.secure_url}`
-  );
+  console.log(`EN signed URL ready`);
+  console.log(`AR signed URL ready`);
 
-  const imageUrls = [
-    assetEn.secure_url,
-    assetAr.secure_url,
-  ];
-
-  const dueAt =
-    getIstanbulSchedule(
-      item.hour,
-      item.minute
-    );
-
-  const text =
-    buildCaption(item);
+  const imageUrls = [signedEn, signedAr];
+  const dueAt = getIstanbulSchedule(item.hour, item.minute);
+  const text = buildCaption(item);
 
   const channels = [
     {
       name: "Facebook",
-      id:
-        cfg.facebookChannelId,
+      id: cfg.facebookChannelId,
     },
-
     {
       name: "Instagram",
-      id:
-        cfg.instagramChannelId,
+      id: cfg.instagramChannelId,
     },
   ];
 
   for (const channel of channels) {
-    console.log(
-      `Scheduling ${item.key} on ${channel.name}...`
-    );
+    console.log(`Scheduling ${item.key} on ${channel.name}...`);
 
-    const post =
-      await createBufferPost({
-        channelId:
-          channel.id,
+    const post = await createBufferPost({
+      channelId: channel.id,
+      text,
+      dueAt,
+      imageUrls,
+    });
 
-        text,
-
-        dueAt,
-
-        imageUrls,
-      });
-
-    console.log(
-      `SUCCESS ${channel.name}`
-    );
-
-    console.log(
-      `Buffer Post ID: ${post.id}`
-    );
+    console.log(`SUCCESS ${channel.name}`);
+    console.log(`Buffer Post ID: ${post.id}`);
   }
 
-  console.log(
-    `${item.key} scheduled for ${dueAt}`
-  );
+  console.log(`${item.key} scheduled for ${dueAt}`);
 }
 
 async function main() {
-  console.log(
-    "Starting Cimaly automatic Buffer publisher..."
-  );
+  console.log("Starting Cimaly automatic Buffer publisher with Supabase...");
 
-  for (
-    const item of DAILY_ITEMS
-  ) {
+  for (const item of DAILY_ITEMS) {
     try {
-      await processItem(
-        item
-      );
+      await processItem(item);
     } catch (error) {
-      console.error(
-        `ERROR while processing ${item.key}`
-      );
-
-      console.error(
-        error.message
-      );
-
+      console.error(`ERROR while processing ${item.key}`);
+      console.error(error.message);
       process.exitCode = 1;
     }
   }
 
   console.log("");
-  console.log(
-    "Cimaly publisher finished."
-  );
+  console.log("Cimaly publisher finished.");
 }
 
-main().catch(
-  (error) => {
-    console.error(
-      "Fatal error:"
-    );
-
-    console.error(
-      error
-    );
-
-    process.exit(1);
-  }
-);
+main().catch((error) => {
+  console.error("Fatal error:");
+  console.error(error);
+  process.exit(1);
+});

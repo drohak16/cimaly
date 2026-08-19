@@ -17,12 +17,21 @@ for (const key of REQUIRED) {
 
 const cfg = {
   bufferApiKey: process.env.BUFFER_API_KEY,
-  facebookChannelId: process.env.BUFFER_CHANNEL_ID_FACEBOOK,
-  instagramChannelId: process.env.BUFFER_CHANNEL_ID_INSTAGRAM,
 
-  cloudName: process.env.CLOUDINARY_CLOUD_NAME,
-  cloudinaryApiKey: process.env.CLOUDINARY_API_KEY,
-  cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET,
+  facebookChannelId:
+    process.env.BUFFER_CHANNEL_ID_FACEBOOK,
+
+  instagramChannelId:
+    process.env.BUFFER_CHANNEL_ID_INSTAGRAM,
+
+  cloudName:
+    process.env.CLOUDINARY_CLOUD_NAME,
+
+  cloudinaryApiKey:
+    process.env.CLOUDINARY_API_KEY,
+
+  cloudinaryApiSecret:
+    process.env.CLOUDINARY_API_SECRET,
 };
 
 const DAILY_ITEMS = [
@@ -34,6 +43,7 @@ const DAILY_ITEMS = [
     en: "Series pick",
     ar: "اختيار مسلسل",
   },
+
   {
     key: "anime",
     hour: 16,
@@ -42,6 +52,7 @@ const DAILY_ITEMS = [
     en: "Anime pick",
     ar: "اختيار أنمي",
   },
+
   {
     key: "movie",
     hour: 20,
@@ -55,15 +66,18 @@ const DAILY_ITEMS = [
 function getIstanbulSchedule(hour, minute) {
   const now = new Date();
 
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/Istanbul",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(now);
+  const parts =
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Europe/Istanbul",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(now);
 
   const get = (type) =>
-    parts.find((part) => part.type === type)?.value;
+    parts.find(
+      (part) => part.type === type
+    )?.value;
 
   const year = Number(get("year"));
   const month = Number(get("month"));
@@ -81,7 +95,8 @@ function getIstanbulSchedule(hour, minute) {
     )
   );
 
-  // If today's time already passed, schedule tomorrow.
+  // Si l'heure est déjà passée aujourd'hui,
+  // programmer pour demain.
   if (due <= now) {
     due = new Date(
       Date.UTC(
@@ -106,7 +121,10 @@ Watch now on cimaly.cc
 شاهد الآن على cimaly.cc`;
 }
 
-async function getCloudinaryAsset(folder, publicId) {
+async function getCloudinaryAsset(
+  folder,
+  publicId
+) {
   const auth = Buffer.from(
     `${cfg.cloudinaryApiKey}:${cfg.cloudinaryApiSecret}`
   ).toString("base64");
@@ -115,12 +133,15 @@ async function getCloudinaryAsset(folder, publicId) {
     `https://api.cloudinary.com/v1_1/${cfg.cloudName}/resources/search`,
     {
       method: "POST",
+
       headers: {
         "Content-Type": "application/json",
         Authorization: `Basic ${auth}`,
       },
+
       body: JSON.stringify({
-        expression: `asset_folder="${folder}" AND public_id="${publicId}"`,
+        expression:
+          `asset_folder="${folder}" AND public_id="${publicId}"`,
         max_results: 1,
       }),
     }
@@ -130,7 +151,9 @@ async function getCloudinaryAsset(folder, publicId) {
 
   if (!response.ok) {
     throw new Error(
-      `Cloudinary error ${response.status}: ${JSON.stringify(data)}`
+      `Cloudinary error ${response.status}: ${JSON.stringify(
+        data
+      )}`
     );
   }
 
@@ -160,7 +183,9 @@ async function createBufferPost({
       createPost(
         input: {
           text: ${JSON.stringify(text)}
-          channelId: ${JSON.stringify(channelId)}
+          channelId: ${JSON.stringify(
+            channelId
+          )}
           schedulingType: automatic
           mode: customScheduled
           dueAt: ${JSON.stringify(dueAt)}
@@ -181,39 +206,56 @@ async function createBufferPost({
     }
   `;
 
-  const response = await fetch(BUFFER_API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${cfg.bufferApiKey}`,
-    },
-    body: JSON.stringify({ query }),
-  });
+  const response = await fetch(
+    BUFFER_API_URL,
+    {
+      method: "POST",
+
+      headers: {
+        "Content-Type": "application/json",
+        Authorization:
+          `Bearer ${cfg.bufferApiKey}`,
+      },
+
+      body: JSON.stringify({
+        query,
+      }),
+    }
+  );
 
   const data = await response.json();
 
   if (!response.ok) {
     throw new Error(
-      `Buffer HTTP error ${response.status}: ${JSON.stringify(data)}`
+      `Buffer HTTP error ${response.status}: ${JSON.stringify(
+        data
+      )}`
     );
   }
 
   if (data.errors?.length) {
     throw new Error(
-      `Buffer GraphQL error: ${JSON.stringify(data.errors)}`
+      `Buffer GraphQL error: ${JSON.stringify(
+        data.errors
+      )}`
     );
   }
 
-  const result = data.data?.createPost;
+  const result =
+    data.data?.createPost;
 
   if (!result) {
     throw new Error(
-      `Unexpected Buffer response: ${JSON.stringify(data)}`
+      `Unexpected Buffer response: ${JSON.stringify(
+        data
+      )}`
     );
   }
 
   if (result.message) {
-    throw new Error(`Buffer error: ${result.message}`);
+    throw new Error(
+      `Buffer error: ${result.message}`
+    );
   }
 
   return result.post;
@@ -221,47 +263,108 @@ async function createBufferPost({
 
 async function processItem(item) {
   console.log("");
-  console.log("==============================");
-  console.log(`Processing ${item.key}`);
-  console.log("==============================");
+  console.log(
+    "================================"
+  );
+  console.log(
+    `Processing ${item.key}`
+  );
+  console.log(
+    "================================"
+  );
 
-  const folderEn = "cimaly/social/daily/en";
-  const folderAr = "cimaly/social/daily/ar";
+  // Ta structure Cloudinary actuelle :
+  //
+  // cimaly/social/daily/en/series
+  // cimaly/social/daily/en/anime
+  // cimaly/social/daily/en/movie
+  //
+  // cimaly/social/daily/ar/series
+  // cimaly/social/daily/ar/anime
+  // cimaly/social/daily/ar/movie
 
-  const [assetEn, assetAr] = await Promise.all([
-    getCloudinaryAsset(folderEn, item.key),
-    getCloudinaryAsset(folderAr, item.key),
-  ]);
+  const folderEn =
+    `cimaly/social/daily/en/${item.key}`;
 
-  // Important safety rule:
-  // never post if one language is missing.
+  const folderAr =
+    `cimaly/social/daily/ar/${item.key}`;
+
+  console.log(
+    `Looking in EN folder: ${folderEn}`
+  );
+
+  console.log(
+    `Looking in AR folder: ${folderAr}`
+  );
+
+  const [assetEn, assetAr] =
+    await Promise.all([
+      getCloudinaryAsset(
+        folderEn,
+        item.key
+      ),
+
+      getCloudinaryAsset(
+        folderAr,
+        item.key
+      ),
+    ]);
+
+  /*
+    Sécurité :
+    si une image EN ou AR manque,
+    rien n'est envoyé à Buffer.
+  */
+
   if (!assetEn || !assetAr) {
-    console.log(`SKIPPING ${item.key}`);
-    console.log(`EN found: ${Boolean(assetEn)}`);
-    console.log(`AR found: ${Boolean(assetAr)}`);
+    console.log(
+      `SKIPPING ${item.key}`
+    );
+
+    console.log(
+      `EN found: ${Boolean(assetEn)}`
+    );
+
+    console.log(
+      `AR found: ${Boolean(assetAr)}`
+    );
+
     return;
   }
+
+  console.log(
+    `EN image: ${assetEn.secure_url}`
+  );
+
+  console.log(
+    `AR image: ${assetAr.secure_url}`
+  );
 
   const imageUrls = [
     assetEn.secure_url,
     assetAr.secure_url,
   ];
 
-  const dueAt = getIstanbulSchedule(
-    item.hour,
-    item.minute
-  );
+  const dueAt =
+    getIstanbulSchedule(
+      item.hour,
+      item.minute
+    );
 
-  const text = buildCaption(item);
+  const text =
+    buildCaption(item);
 
   const channels = [
     {
       name: "Facebook",
-      id: cfg.facebookChannelId,
+      id:
+        cfg.facebookChannelId,
     },
+
     {
       name: "Instagram",
-      id: cfg.instagramChannelId,
+      id:
+        cfg.instagramChannelId,
     },
   ];
 
@@ -270,15 +373,24 @@ async function processItem(item) {
       `Scheduling ${item.key} on ${channel.name}...`
     );
 
-    const post = await createBufferPost({
-      channelId: channel.id,
-      text,
-      dueAt,
-      imageUrls,
-    });
+    const post =
+      await createBufferPost({
+        channelId:
+          channel.id,
+
+        text,
+
+        dueAt,
+
+        imageUrls,
+      });
 
     console.log(
-      `SUCCESS ${channel.name}: ${post.id}`
+      `SUCCESS ${channel.name}`
+    );
+
+    console.log(
+      `Buffer Post ID: ${post.id}`
     );
   }
 
@@ -292,26 +404,42 @@ async function main() {
     "Starting Cimaly automatic Buffer publisher..."
   );
 
-  for (const item of DAILY_ITEMS) {
+  for (
+    const item of DAILY_ITEMS
+  ) {
     try {
-      await processItem(item);
+      await processItem(
+        item
+      );
     } catch (error) {
       console.error(
-        `ERROR while processing ${item.key}:`
+        `ERROR while processing ${item.key}`
       );
-      console.error(error.message);
+
+      console.error(
+        error.message
+      );
 
       process.exitCode = 1;
     }
   }
 
   console.log("");
-  console.log("Publisher finished.");
+  console.log(
+    "Cimaly publisher finished."
+  );
 }
 
-main().catch((error) => {
-  console.error("Fatal error:");
-  console.error(error);
+main().catch(
+  (error) => {
+    console.error(
+      "Fatal error:"
+    );
 
-  process.exit(1);
-});
+    console.error(
+      error
+    );
+
+    process.exit(1);
+  }
+);

@@ -14,10 +14,8 @@ jobs:
 
     env:
       BUFFER_ACCESS_TOKEN: ${{ secrets.BUFFER_API_KEY }}
-
-      BUFFER_FACEBOOK_PROFILE_ID: ${{ secrets.BUFFER_CHANNEL_FACEBOOK }}
-      BUFFER_INSTAGRAM_PROFILE_ID: ${{ secrets.BUFFER_CHANNEL_INSTAGRAM }}
-
+      BUFFER_FACEBOOK_PROFILE_ID: ${{ secrets.BUFFER_CHANNEL_ID_FACEBOOK }}
+      BUFFER_INSTAGRAM_PROFILE_ID: ${{ secrets.BUFFER_CHANNEL_ID_INSTAGRAM }}
       PUBLISH_NOW: ${{ github.event.inputs.publish_now }}
 
     steps:

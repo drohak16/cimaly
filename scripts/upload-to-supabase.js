@@ -1,166 +1,66 @@
-const REQUIRED = [
-  "SUPABASE_URL",
-  "SUPABASE_SECRET_KEY",
-  "SUPABASE_BUCKET",
-];
+import fs from "fs";
 
-for (const key of REQUIRED) {
-  if (!process.env[key]) {
-    throw new Error(`Missing required secret: ${key}`);
-  }
+const SUPABASE_FUNCTION_URL =
+  "https://yzpdkqjfcivirilkbuwi.supabase.co/functions/v1/upload-social-image";
+
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+
+if (!SUPABASE_ANON_KEY) {
+  throw new Error("SUPABASE_ANON_KEY manquant dans GitHub Secrets");
 }
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SECRET_KEY = process.env.SUPABASE_SECRET_KEY;
-const SUPABASE_BUCKET = process.env.SUPABASE_BUCKET;
+// Usage:
+// node script/upload-to-supabase.js ./image.jpg daily/en/series.jpg
 
-const FILES = [
-  {
-    env: "SERIES_EN_URL",
-    remote: "daily/en/series.jpg",
-  },
-  {
-    env: "SERIES_AR_URL",
-    remote: "daily/ar/series.jpg",
-  },
-  {
-    env: "ANIME_EN_URL",
-    remote: "daily/en/anime.jpg",
-  },
-  {
-    env: "ANIME_AR_URL",
-    remote: "daily/ar/anime.jpg",
-  },
-  {
-    env: "MOVIE_EN_URL",
-    remote: "daily/en/movie.jpg",
-  },
-  {
-    env: "MOVIE_AR_URL",
-    remote: "daily/ar/movie.jpg",
-  },
-];
+const localFile = process.argv[2];
+const storagePath = process.argv[3];
 
-async function downloadImage(url) {
-  const response = await fetch(url);
-
-  if (!response.ok) {
-    throw new Error(
-      `Download failed ${response.status}: ${url}`
-    );
-  }
-
-  const contentType =
-    response.headers.get("content-type") || "image/jpeg";
-
-  const buffer = Buffer.from(
-    await response.arrayBuffer()
+if (!localFile || !storagePath) {
+  console.error(
+    "Usage: node script/upload-to-supabase.js <localFile> <storagePath>"
   );
-
-  return {
-    buffer,
-    contentType,
-  };
-}
-
-async function uploadToSupabase(
-  remotePath,
-  buffer,
-  contentType
-) {
-  const url =
-    `${SUPABASE_URL}/storage/v1/object/` +
-    `${SUPABASE_BUCKET}/${remotePath}`;
-
-  const response = await fetch(url, {
-    method: "POST",
-
-    headers: {
-      apikey: SUPABASE_SECRET_KEY,
-      Authorization:
-        `Bearer ${SUPABASE_SECRET_KEY}`,
-      "Content-Type": contentType,
-      "x-upsert": "true",
-    },
-
-    body: buffer,
-  });
-
-  const result = await response.text();
-
-  if (!response.ok) {
-    throw new Error(
-      `Supabase upload failed ${response.status}: ${result}`
-    );
-  }
-}
-
-async function processFile(file) {
-  const sourceUrl =
-    process.env[file.env];
-
-  if (!sourceUrl) {
-    console.log(
-      `SKIP ${file.remote}: ${file.env} missing`
-    );
-
-    return false;
-  }
-
-  console.log(
-    `Downloading ${file.remote}...`
-  );
-
-  const image =
-    await downloadImage(sourceUrl);
-
-  console.log(
-    `Uploading ${file.remote} to Supabase...`
-  );
-
-  await uploadToSupabase(
-    file.remote,
-    image.buffer,
-    image.contentType
-  );
-
-  console.log(
-    `SUCCESS: ${file.remote}`
-  );
-
-  return true;
-}
-
-async function main() {
-  console.log(
-    "Starting Cloudinary → Supabase transfer..."
-  );
-
-  let transferred = 0;
-
-  for (const file of FILES) {
-    try {
-      const ok =
-        await processFile(file);
-
-      if (ok) {
-        transferred++;
-      }
-    } catch (error) {
-      console.error(
-        `ERROR ${file.remote}: ${error.message}`
-      );
-
-      process.exitCode = 1;
-    }
-  }
-
-  console.log(
-    `Transferred ${transferred}/${FILES.length} images.`
-  );
-}
-
-main().catch((error) => {
-  console.error(error);
   process.exit(1);
-});
+}
+
+if (!fs.existsSync(localFile)) {
+  throw new Error(`Fichier introuvable: ${localFile}`);
+}
+
+const fileBuffer = fs.readFileSync(localFile);
+
+let contentType = "image/jpeg";
+
+if (localFile.endsWith(".png")) {
+  contentType = "image/png";
+} else if (localFile.endsWith(".webp")) {
+  contentType = "image/webp";
+}
+
+const response = await fetch(
+  `${SUPABASE_FUNCTION_URL}?path=${encodeURIComponent(storagePath)}`,
+  {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      "Content-Type": contentType,
+    },
+    body: fileBuffer,
+  }
+);
+
+const text = await response.text();
+
+if (!response.ok) {
+  console.error("Upload Supabase échoué:");
+  console.error(text);
+  process.exit(1);
+}
+
+console.log("Upload Supabase réussi");
+console.log(text);
+
+const publicUrl =
+  `https://yzpdkqjfcivirilkbuwi.supabase.co/storage/v1/object/public/` +
+  `cimaly-social/${storagePath}`;
+
+console.log("PUBLIC_URL=" + publicUrl);

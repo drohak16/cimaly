@@ -1,6 +1,3 @@
-import fs from "fs";
-import path from "path";
-
 const REQUIRED = [
   "SUPABASE_URL",
   "SUPABASE_SECRET_KEY",
@@ -19,115 +16,151 @@ const SUPABASE_BUCKET = process.env.SUPABASE_BUCKET;
 
 const FILES = [
   {
-    local: "public/social/daily/en/series.jpg",
+    env: "SERIES_EN_URL",
     remote: "daily/en/series.jpg",
   },
   {
-    local: "public/social/daily/ar/series.jpg",
+    env: "SERIES_AR_URL",
     remote: "daily/ar/series.jpg",
   },
   {
-    local: "public/social/daily/en/anime.jpg",
+    env: "ANIME_EN_URL",
     remote: "daily/en/anime.jpg",
   },
   {
-    local: "public/social/daily/ar/anime.jpg",
+    env: "ANIME_AR_URL",
     remote: "daily/ar/anime.jpg",
   },
   {
-    local: "public/social/daily/en/movie.jpg",
+    env: "MOVIE_EN_URL",
     remote: "daily/en/movie.jpg",
   },
   {
-    local: "public/social/daily/ar/movie.jpg",
+    env: "MOVIE_AR_URL",
     remote: "daily/ar/movie.jpg",
   },
 ];
 
-function getContentType(filePath) {
-  const ext = path.extname(filePath).toLowerCase();
+async function downloadImage(url) {
+  const response = await fetch(url);
 
-  if (ext === ".png") {
-    return "image/png";
+  if (!response.ok) {
+    throw new Error(
+      `Download failed ${response.status}: ${url}`
+    );
   }
 
-  if (ext === ".webp") {
-    return "image/webp";
-  }
+  const contentType =
+    response.headers.get("content-type") || "image/jpeg";
 
-  return "image/jpeg";
+  const buffer = Buffer.from(
+    await response.arrayBuffer()
+  );
+
+  return {
+    buffer,
+    contentType,
+  };
 }
 
-async function uploadFile(localPath, remotePath) {
-  if (!fs.existsSync(localPath)) {
-    console.log(`SKIP missing file: ${localPath}`);
-    return false;
-  }
-
-  const fileBuffer = fs.readFileSync(localPath);
-  const contentType = getContentType(localPath);
-
+async function uploadToSupabase(
+  remotePath,
+  buffer,
+  contentType
+) {
   const url =
     `${SUPABASE_URL}/storage/v1/object/` +
     `${SUPABASE_BUCKET}/${remotePath}`;
 
   const response = await fetch(url, {
     method: "POST",
+
     headers: {
       apikey: SUPABASE_SECRET_KEY,
-      Authorization: `Bearer ${SUPABASE_SECRET_KEY}`,
+      Authorization:
+        `Bearer ${SUPABASE_SECRET_KEY}`,
       "Content-Type": contentType,
       "x-upsert": "true",
     },
-    body: fileBuffer,
+
+    body: buffer,
   });
 
-  const data = await response.text();
+  const result = await response.text();
 
   if (!response.ok) {
     throw new Error(
-      `Upload failed for ${remotePath}: ${response.status} ${data}`
+      `Supabase upload failed ${response.status}: ${result}`
     );
   }
+}
 
-  console.log(`UPLOADED: ${remotePath}`);
+async function processFile(file) {
+  const sourceUrl =
+    process.env[file.env];
+
+  if (!sourceUrl) {
+    console.log(
+      `SKIP ${file.remote}: ${file.env} missing`
+    );
+
+    return false;
+  }
+
+  console.log(
+    `Downloading ${file.remote}...`
+  );
+
+  const image =
+    await downloadImage(sourceUrl);
+
+  console.log(
+    `Uploading ${file.remote} to Supabase...`
+  );
+
+  await uploadToSupabase(
+    file.remote,
+    image.buffer,
+    image.contentType
+  );
+
+  console.log(
+    `SUCCESS: ${file.remote}`
+  );
 
   return true;
 }
 
 async function main() {
-  console.log("Starting Supabase Storage upload...");
+  console.log(
+    "Starting Cloudinary → Supabase transfer..."
+  );
 
-  let uploaded = 0;
+  let transferred = 0;
 
   for (const file of FILES) {
     try {
-      const success = await uploadFile(
-        file.local,
-        file.remote
-      );
+      const ok =
+        await processFile(file);
 
-      if (success) {
-        uploaded++;
+      if (ok) {
+        transferred++;
       }
     } catch (error) {
-      console.error(error.message);
+      console.error(
+        `ERROR ${file.remote}: ${error.message}`
+      );
+
       process.exitCode = 1;
     }
   }
 
-  console.log("");
-  console.log(`Uploaded ${uploaded}/${FILES.length} files.`);
-
-  if (uploaded === 0) {
-    console.log(
-      "No images found. Nothing was uploaded."
-    );
-  }
+  console.log(
+    `Transferred ${transferred}/${FILES.length} images.`
+  );
 }
 
 main().catch((error) => {
-  console.error("Fatal error:");
   console.error(error);
   process.exit(1);
 });

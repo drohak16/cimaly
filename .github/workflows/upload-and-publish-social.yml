@@ -1,35 +1,10 @@
-name: Upload and Publish Social
+- name: Upload images to Supabase
+  env:
+    SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+    SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+    SUPABASE_BUCKET: ${{ secrets.SUPABASE_BUCKET }}
 
-on:
-  workflow_dispatch:
+    SERIES_EN_URL: ${{ secrets.SERIES_EN_URL }}
+    SERIES_AR_URL: ${{ secrets.SERIES_AR_URL }}
 
-jobs:
-  upload-and-publish:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Upload images to Supabase
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
-          SUPABASE_BUCKET: ${{ secrets.SUPABASE_BUCKET }}
-        run: node scripts/upload-to-supabase.js
-
-      - name: Publish posts with Buffer
-        env:
-          BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
-          BUFFER_CHANNEL_ID_FACEBOOK: ${{ secrets.BUFFER_CHANNEL_ID_FACEBOOK }}
-          BUFFER_CHANNEL_ID_INSTAGRAM: ${{ secrets.BUFFER_CHANNEL_ID_INSTAGRAM }}
-
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
-          SUPABASE_BUCKET: ${{ secrets.SUPABASE_BUCKET }}
-        run: node scripts/publish-buffer-daily.js
+  run: node scripts/upload-to-supabase.js

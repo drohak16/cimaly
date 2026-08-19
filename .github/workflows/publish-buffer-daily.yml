@@ -2,9 +2,7 @@ name: Publish Buffer Daily
 
 on:
   workflow_dispatch:
-
   schedule:
-    # 06:00 UTC = 09:00 Istanbul
     - cron: "0 6 * * *"
 
 jobs:
@@ -23,15 +21,9 @@ jobs:
       - name: Publish Cimaly posts to Buffer
         env:
           BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
-
           BUFFER_CHANNEL_ID_FACEBOOK: ${{ secrets.BUFFER_CHANNEL_ID_FACEBOOK }}
-
           BUFFER_CHANNEL_ID_INSTAGRAM: ${{ secrets.BUFFER_CHANNEL_ID_INSTAGRAM }}
-
-          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
-
-          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
-
-          CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
-
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SUPABASE_BUCKET: ${{ secrets.SUPABASE_BUCKET }}
         run: node scripts/publish-buffer-daily.js

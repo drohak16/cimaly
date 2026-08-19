@@ -13,7 +13,7 @@ function escapeXml(value: string) {
     .replace(/'/g, "&apos;");
 }
 
-export const Route = createFileRoute("/sitemap-movies.xml")({
+export const Route = createFileRoute("/sitemap-movies[.]xml")({
   server: {
     handlers: {
       GET: async () => {
@@ -46,7 +46,7 @@ export const Route = createFileRoute("/sitemap-movies.xml")({
         }
 
         const urls = Array.from(movieIds).map(
-          (id) => `${BASE_URL}/watch/movie/${id}`,
+          (id) => `${BASE_URL}/movie/${id}`
         );
 
         const xml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -55,7 +55,7 @@ ${urls
   .map(
     (url) => `  <url>
     <loc>${escapeXml(url)}</loc>
-  </url>`,
+  </url>`
   )
   .join("\n")}
 </urlset>`;
@@ -63,7 +63,7 @@ ${urls
         return new Response(xml, {
           status: 200,
           headers: {
-            "Content-Type": "application/xml; charset=UTF-8",
+            "Content-Type": "application/xml; charset=utf-8",
             "Cache-Control": "public, max-age=3600",
           },
         });

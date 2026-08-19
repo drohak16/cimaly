@@ -1,0 +1,37 @@
+name: Publish Buffer Daily
+
+on:
+  workflow_dispatch:
+
+  schedule:
+    # 06:00 UTC = 09:00 Istanbul
+    - cron: "0 6 * * *"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Publish Cimaly posts to Buffer
+        env:
+          BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
+
+          BUFFER_CHANNEL_ID_FACEBOOK: ${{ secrets.BUFFER_CHANNEL_ID_FACEBOOK }}
+
+          BUFFER_CHANNEL_ID_INSTAGRAM: ${{ secrets.BUFFER_CHANNEL_ID_INSTAGRAM }}
+
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+
+          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+
+          CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+
+        run: node scripts/publish-buffer-daily.js

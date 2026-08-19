@@ -1,6 +1,7 @@
 const BUFFER_ACCESS_TOKEN = process.env.BUFFER_ACCESS_TOKEN;
 const FACEBOOK_PROFILE_ID = process.env.BUFFER_FACEBOOK_PROFILE_ID;
 const INSTAGRAM_PROFILE_ID = process.env.BUFFER_INSTAGRAM_PROFILE_ID;
+
 const PUBLISH_NOW = process.env.PUBLISH_NOW === "true";
 
 if (!BUFFER_ACCESS_TOKEN) {
@@ -21,7 +22,8 @@ const CLOUDINARY_BASE =
 const posts = [
   {
     key: "en_series",
-    image: `${CLOUDINARY_BASE}/cimaly/social/daily/en/series.jpg`,
+    image:
+      `${CLOUDINARY_BASE}/cimaly/social/daily/en/series.jpg`,
     text: `SERIES PICK
 
 SILO
@@ -32,7 +34,8 @@ Watch now on cimaly.cc`
 
   {
     key: "ar_series",
-    image: `${CLOUDINARY_BASE}/cimaly/social/daily/ar/series.jpg`,
+    image:
+      `${CLOUDINARY_BASE}/cimaly/social/daily/ar/series.jpg`,
     text: `اختيار مسلسل
 
 سايلو
@@ -43,7 +46,8 @@ Watch now on cimaly.cc`
 
   {
     key: "en_movie",
-    image: `${CLOUDINARY_BASE}/cimaly/social/daily/en/movie.jpg`,
+    image:
+      `${CLOUDINARY_BASE}/cimaly/social/daily/en/movie.jpg`,
     text: `MOVIE PICK
 
 AVENGERS: DOOMSDAY
@@ -54,7 +58,8 @@ Watch now on cimaly.cc`
 
   {
     key: "ar_movie",
-    image: `${CLOUDINARY_BASE}/cimaly/social/daily/ar/movie.jpg`,
+    image:
+      `${CLOUDINARY_BASE}/cimaly/social/daily/ar/movie.jpg`,
     text: `اختيار فيلم
 
 المنتقمون: يوم القيامة
@@ -65,24 +70,30 @@ Watch now on cimaly.cc`
 
   {
     key: "en_anime",
-    image: `${CLOUDINARY_BASE}/cimaly/social/daily/en/anime.jpg`,
+    image:
+      `${CLOUDINARY_BASE}/cimaly/social/daily/en/anime.jpg`,
     text: `ANIME PICK
 
 MUSHOKU TENSEI: JOBLESS REINCARNATION
 
-A new life. A second chance. An epic journey.
+A new life.
+A second chance.
+An epic journey.
 
 Watch now on cimaly.cc`
   },
 
   {
     key: "ar_anime",
-    image: `${CLOUDINARY_BASE}/cimaly/social/daily/ar/anime.jpg`,
+    image:
+      `${CLOUDINARY_BASE}/cimaly/social/daily/ar/anime.jpg`,
     text: `اختيار أنمي
 
 موشوكو تينسي: التناسخ بلا عمل
 
-حياة جديدة. فرصة ثانية. رحلة ملحمية.
+حياة جديدة.
+فرصة ثانية.
+رحلة ملحمية.
 
 شاهد الآن على cimaly.cc`
   }
@@ -111,39 +122,62 @@ async function createBufferPost(profileId, text, imageUrl) {
     }
   );
 
-  const result = await response.json();
+  const raw = await response.text();
+
+  let result;
+
+  try {
+    result = JSON.parse(raw);
+  } catch {
+    result = raw;
+  }
 
   if (!response.ok) {
-    console.error("Buffer error:", result);
-    throw new Error(`Buffer HTTP ${response.status}`);
+    console.error("❌ Buffer error");
+    console.error(result);
+
+    throw new Error(
+      `Buffer HTTP ${response.status}`
+    );
   }
 
   return result;
 }
 
 async function main() {
-  for (const post of posts) {
-    console.log(`Publishing ${post.key} → Facebook`);
+  console.log("Starting Cimaly social test...");
+  console.log(
+    `Publish now: ${PUBLISH_NOW ? "YES" : "NO - Buffer queue"}`
+  );
 
+  for (const post of posts) {
+    console.log(`\n➡️ ${post.key}`);
+
+    console.log("Facebook...");
     await createBufferPost(
       FACEBOOK_PROFILE_ID,
       post.text,
       post.image
     );
 
-    console.log(`Publishing ${post.key} → Instagram`);
+    console.log("✅ Facebook OK");
 
+    console.log("Instagram...");
     await createBufferPost(
       INSTAGRAM_PROFILE_ID,
       post.text,
       post.image
     );
+
+    console.log("✅ Instagram OK");
   }
 
-  console.log("✅ All posts sent to Buffer");
+  console.log("\n✅ ALL POSTS SENT TO BUFFER");
 }
 
 main().catch((error) => {
+  console.error("\n❌ CIMALY SOCIAL ERROR");
   console.error(error);
+
   process.exit(1);
 });

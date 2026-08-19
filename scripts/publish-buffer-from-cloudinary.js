@@ -1,6 +1,7 @@
 const BUFFER_ACCESS_TOKEN = process.env.BUFFER_ACCESS_TOKEN;
 const FACEBOOK_PROFILE_ID = process.env.BUFFER_FACEBOOK_PROFILE_ID;
 const INSTAGRAM_PROFILE_ID = process.env.BUFFER_INSTAGRAM_PROFILE_ID;
+
 const PUBLISH_NOW = process.env.PUBLISH_NOW === "true";
 
 if (!BUFFER_ACCESS_TOKEN) {
@@ -16,7 +17,9 @@ if (!INSTAGRAM_PROFILE_ID) {
 }
 
 const BUFFER_API_URL = "https://api.buffer.com";
-const CLOUDINARY_BASE = "https://res.cloudinary.com/vzsas2fn/image/upload";
+
+const CLOUDINARY_BASE =
+  "https://res.cloudinary.com/vzsas2fn/image/upload";
 
 const posts = [
   {
@@ -29,6 +32,7 @@ The truth lies below.
 
 Watch now on cimaly.cc`
   },
+
   {
     key: "ar_series",
     image: `${CLOUDINARY_BASE}/cimaly/social/daily/ar/series.jpg`,
@@ -39,6 +43,7 @@ Watch now on cimaly.cc`
 
 شاهد الآن على cimaly.cc`
   },
+
   {
     key: "en_movie",
     image: `${CLOUDINARY_BASE}/cimaly/social/daily/en/movie.jpg`,
@@ -49,6 +54,7 @@ The fight for our world begins now.
 
 Watch now on cimaly.cc`
   },
+
   {
     key: "ar_movie",
     image: `${CLOUDINARY_BASE}/cimaly/social/daily/ar/movie.jpg`,
@@ -59,6 +65,7 @@ Watch now on cimaly.cc`
 
 شاهد الآن على cimaly.cc`
   },
+
   {
     key: "en_anime",
     image: `${CLOUDINARY_BASE}/cimaly/social/daily/en/anime.jpg`,
@@ -72,6 +79,7 @@ An epic journey.
 
 Watch now on cimaly.cc`
   },
+
   {
     key: "ar_anime",
     image: `${CLOUDINARY_BASE}/cimaly/social/daily/ar/anime.jpg`,
@@ -96,7 +104,7 @@ async function callBufferGraphQL(query) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${BUFFER_ACCESS_TOKEN}`
+      Authorization: `Bearer ${BUFFER_ACCESS_TOKEN}`
     },
     body: JSON.stringify({ query })
   });
@@ -104,29 +112,64 @@ async function callBufferGraphQL(query) {
   const raw = await response.text();
 
   let result;
+
   try {
     result = JSON.parse(raw);
   } catch {
-    throw new Error(`Réponse Buffer invalide: ${raw}`);
+    console.error(raw);
+    throw new Error("Réponse Buffer invalide");
   }
 
   if (!response.ok) {
-    console.error("❌ HTTP error from Buffer");
-    console.error(result);
+    console.error(JSON.stringify(result, null, 2));
     throw new Error(`Buffer HTTP ${response.status}`);
   }
 
-  if (result.errors && result.errors.length > 0) {
-    console.error("❌ GraphQL errors");
-    console.error(JSON.stringify(result.errors, null, 2));
-    throw new Error(result.errors[0].message || "GraphQL error");
+  if (result.errors?.length) {
+    console.error(
+      JSON.stringify(result.errors, null, 2)
+    );
+
+    throw new Error(
+      result.errors[0]?.message || "GraphQL error"
+    );
   }
 
   return result;
 }
 
-async function createBufferPost(channelId, text, imageUrl) {
-  const mode = PUBLISH_NOW ? "shareNow" : "addToQueue";
+async function createBufferPost(
+  channelId,
+  service,
+  text,
+  imageUrl
+) {
+  const mode = PUBLISH_NOW
+    ? "shareNow"
+    : "addToQueue";
+
+  let metadata;
+
+  if (service === "facebook") {
+    metadata = `
+      metadata: {
+        facebook: {
+          type: post
+        }
+      }
+    `;
+  }
+
+  if (service === "instagram") {
+    metadata = `
+      metadata: {
+        instagram: {
+          type: post
+          shouldShareToFeed: true
+        }
+      }
+    `;
+  }
 
   const query = `
     mutation CreatePost {
@@ -136,6 +179,7 @@ async function createBufferPost(channelId, text, imageUrl) {
           channelId: ${gqlString(channelId)}
           schedulingType: automatic
           mode: ${mode}
+
           assets: [
             {
               image: {
@@ -143,6 +187,8 @@ async function createBufferPost(channelId, text, imageUrl) {
               }
             }
           ]
+
+          ${metadata}
         }
       ) {
         ... on PostActionSuccess {
@@ -153,6 +199,7 @@ async function createBufferPost(channelId, text, imageUrl) {
             dueAt
           }
         }
+
         ... on MutationError {
           message
         }
@@ -160,19 +207,26 @@ async function createBufferPost(channelId, text, imageUrl) {
     }
   `;
 
-  const result = await callBufferGraphQL(query);
+  const result =
+    await callBufferGraphQL(query);
 
-  const payload = result?.data?.createPost;
+  const payload =
+    result?.data?.createPost;
 
   if (!payload) {
-    console.error("❌ Réponse createPost vide");
-    console.error(JSON.stringify(result, null, 2));
-    throw new Error("createPost vide");
+    console.error(
+      JSON.stringify(result, null, 2)
+    );
+
+    throw new Error(
+      "Réponse createPost vide"
+    );
   }
 
   if (payload.message) {
     console.error("❌ MutationError");
     console.error(payload.message);
+
     throw new Error(payload.message);
   }
 
@@ -180,36 +234,63 @@ async function createBufferPost(channelId, text, imageUrl) {
 }
 
 async function main() {
-  console.log("Starting Cimaly social test...");
-  console.log(`Publish now: ${PUBLISH_NOW ? "YES" : "NO - Buffer queue"}`);
+  console.log(
+    "Starting Cimaly social test..."
+  );
+
+  console.log(
+    `Publish now: ${
+      PUBLISH_NOW
+        ? "YES"
+        : "NO - Buffer queue"
+    }`
+  );
 
   for (const post of posts) {
     console.log(`\n➡️ ${post.key}`);
 
     console.log("Facebook...");
-    const fb = await createBufferPost(
-      FACEBOOK_PROFILE_ID,
-      post.text,
-      post.image
-    );
+
+    const facebookPost =
+      await createBufferPost(
+        FACEBOOK_PROFILE_ID,
+        "facebook",
+        post.text,
+        post.image
+      );
+
     console.log("✅ Facebook OK");
-    console.log(fb);
+    console.log(
+      `Post ID: ${facebookPost.id}`
+    );
 
     console.log("Instagram...");
-    const ig = await createBufferPost(
-      INSTAGRAM_PROFILE_ID,
-      post.text,
-      post.image
-    );
+
+    const instagramPost =
+      await createBufferPost(
+        INSTAGRAM_PROFILE_ID,
+        "instagram",
+        post.text,
+        post.image
+      );
+
     console.log("✅ Instagram OK");
-    console.log(ig);
+    console.log(
+      `Post ID: ${instagramPost.id}`
+    );
   }
 
-  console.log("\n✅ ALL POSTS SENT TO BUFFER");
+  console.log(
+    "\n✅ ALL POSTS SENT TO BUFFER"
+  );
 }
 
 main().catch((error) => {
-  console.error("\n❌ CIMALY SOCIAL ERROR");
+  console.error(
+    "\n❌ CIMALY SOCIAL ERROR"
+  );
+
   console.error(error);
+
   process.exit(1);
 });

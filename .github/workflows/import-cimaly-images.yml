@@ -14,24 +14,58 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Read image URLs
+        id: urls
+        run: |
+          echo "SERIES_EN=$(jq -r '.series_en' data/social-image-urls.json)" >> $GITHUB_ENV
+          echo "SERIES_AR=$(jq -r '.series_ar' data/social-image-urls.json)" >> $GITHUB_ENV
+          echo "ANIME_EN=$(jq -r '.anime_en' data/social-image-urls.json)" >> $GITHUB_ENV
+          echo "ANIME_AR=$(jq -r '.anime_ar' data/social-image-urls.json)" >> $GITHUB_ENV
+          echo "MOVIE_EN=$(jq -r '.movie_en' data/social-image-urls.json)" >> $GITHUB_ENV
+          echo "MOVIE_AR=$(jq -r '.movie_ar' data/social-image-urls.json)" >> $GITHUB_ENV
+
+      - name: Validate URLs
+        run: |
+          for url in \
+            "$SERIES_EN" \
+            "$SERIES_AR" \
+            "$ANIME_EN" \
+            "$ANIME_AR" \
+            "$MOVIE_EN" \
+            "$MOVIE_AR"
+          do
+            if [ -z "$url" ] || [ "$url" = "null" ]; then
+              echo "Missing image URL"
+              exit 1
+            fi
+          done
+
       - name: Create folders
         run: |
           mkdir -p public/social/daily/en
           mkdir -p public/social/daily/ar
 
-      - name: Download Cimaly visuals
+      - name: Download Cimaly images
         run: |
-          curl -L "https://d2ol7oe51mr4n9.cloudfront.net/user_3HGxDNEsLbirGFvK6UXrvXfJQ3W/ac377476-8646-43b1-a95d-9683b6ebd983.jpg" -o public/social/daily/en/series.jpg
+          curl -fL "$SERIES_EN" -o public/social/daily/en/series.jpg
+          curl -fL "$SERIES_AR" -o public/social/daily/ar/series.jpg
 
-          curl -L "https://d2ol7oe51mr4n9.cloudfront.net/user_3HGxDNEsLbirGFvK6UXrvXfJQ3W/dcf13241-139a-4e32-9828-e5bc1ccc5dfc.jpg" -o public/social/daily/ar/series.jpg
+          curl -fL "$ANIME_EN" -o public/social/daily/en/anime.jpg
+          curl -fL "$ANIME_AR" -o public/social/daily/ar/anime.jpg
 
-          curl -L "https://d2ol7oe51mr4n9.cloudfront.net/user_3HGxDNEsLbirGFvK6UXrvXfJQ3W/0549deab-0303-4d35-bb8a-35da3c16d436.jpg" -o public/social/daily/en/movie.jpg
+          curl -fL "$MOVIE_EN" -o public/social/daily/en/movie.jpg
+          curl -fL "$MOVIE_AR" -o public/social/daily/ar/movie.jpg
 
-          curl -L "https://d2ol7oe51mr4n9.cloudfront.net/user_3HGxDNEsLbirGFvK6UXrvXfJQ3W/4f74e359-cfdf-4677-b00b-39117c143e58.jpg" -o public/social/daily/ar/movie.jpg
+      - name: Verify downloaded images
+        run: |
+          test -s public/social/daily/en/series.jpg
+          test -s public/social/daily/ar/series.jpg
+          test -s public/social/daily/en/anime.jpg
+          test -s public/social/daily/ar/anime.jpg
+          test -s public/social/daily/en/movie.jpg
+          test -s public/social/daily/ar/movie.jpg
 
-          curl -L "https://d2ol7oe51mr4n9.cloudfront.net/user_3HGxDNEsLbirGFvK6UXrvXfJQ3W/de8be26b-6546-4f3d-8e26-3f2e0eb3dcb8.jpg" -o public/social/daily/en/anime.jpg
-
-          curl -L "https://d2ol7oe51mr4n9.cloudfront.net/user_3HGxDNEsLbirGFvK6UXrvXfJQ3W/0efe19c6-061d-452e-b8f2-265efea40020.jpg" -o public/social/daily/ar/anime.jpg
+          echo "✅ All 6 images downloaded"
 
       - name: Commit images
         run: |
@@ -40,6 +74,9 @@ jobs:
 
           git add public/social/daily
 
-          git commit -m "Import Cimaly branded social visuals" || echo "No changes"
-
-          git push
+          if git diff --cached --quiet; then
+            echo "No image changes"
+          else
+            git commit -m "Update Cimaly branded social visuals"
+            git push
+          fi

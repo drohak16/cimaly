@@ -59,8 +59,12 @@ async function main() {
 
   for (const item of items) {
     if (!item.data) {
-      console.log(`⚠️ Missing selection for ${item.key}`);
-      continue;
+      throw new Error(`Missing selection for ${item.key}`);
+    }
+
+    const tmdbId = Number(item.data.tmdb_id);
+    if (!Number.isInteger(tmdbId) || tmdbId <= 0) {
+      throw new Error(`Invalid TMDB ID for ${item.key}`);
     }
 
     const posterUrl =
@@ -68,33 +72,33 @@ async function main() {
       item.data.poster_w780;
 
     if (!posterUrl) {
-      console.log(`⚠️ No poster for ${item.key}`);
-      continue;
+      throw new Error(`No poster for ${item.key} TMDB ${tmdbId}`);
     }
+
+    const filename = `${item.key}-${tmdbId}.jpg`;
 
     const enPath = path.join(
       OUTPUT_ROOT,
       "en",
-      `${item.key}.jpg`
+      filename
     );
 
     const arPath = path.join(
       OUTPUT_ROOT,
       "ar",
-      `${item.key}.jpg`
+      filename
     );
 
-    console.log(`Downloading ${item.key}: ${item.data.title_en}`);
+    console.log(
+      `Downloading ${item.key}: ${item.data.title_en} | TMDB ${tmdbId}`
+    );
 
     await saveImage(posterUrl, enPath);
-
-    // Test initial: same poster EN/AR.
-    // Later we can generate a true Arabic-designed version.
     await saveImage(posterUrl, arPath);
   }
 
   console.log("");
-  console.log("✅ 6 Cimaly social files prepared.");
+  console.log("✅ 6 TMDB-ID-bound Cimaly social files prepared.");
 }
 
 main().catch((error) => {

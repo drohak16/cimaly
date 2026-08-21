@@ -2,23 +2,18 @@ name: Cimaly Daily Social
 
 on:
   workflow_dispatch:
-  workflow_run:
-    workflows:
-      - "Import Cimaly Images"
-    types:
-      - completed
+  schedule:
+    - cron: "0 6 * * *"
 
 permissions:
   contents: write
 
 concurrency:
-  group: cimaly-buffer-publisher
+  group: cimaly-daily-social
   cancel-in-progress: false
 
 jobs:
   cimaly-social:
-    if: >-
-      ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
     steps:
@@ -32,11 +27,71 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Sync published history for TMDB picker
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f data/published-social-history.json ]; then
+            cp data/published-social-history.json data/social-history.json
+            echo "✅ Published history synced into picker history"
+          else
+            echo '{"items":[]}' > data/social-history.json
+            echo "ℹ️ No published history yet; starting clean"
+          fi
+
+      - name: Select today's exact TMDB content
+        env:
+          TMDB_READ_TOKEN: ${{ secrets.TMDB_READ_TOKEN }}
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+        run: node scripts/cimaly-social.js
+
+      - name: Generate exact TMDB poster pack
+        env:
+          TMDB_READ_TOKEN: ${{ secrets.TMDB_READ_TOKEN }}
+        run: node scripts/generate-social-images.js
+
       - name: Read exact selected TMDB IDs
         run: |
           echo "SERIES_TMDB_ID=$(jq -r '.morning_series.tmdb_id' data/last-social-selection.json)" >> "$GITHUB_ENV"
           echo "ANIME_TMDB_ID=$(jq -r '.afternoon_anime.tmdb_id' data/last-social-selection.json)" >> "$GITHUB_ENV"
           echo "MOVIE_TMDB_ID=$(jq -r '.evening_movie.tmdb_id' data/last-social-selection.json)" >> "$GITHUB_ENV"
+
+      - name: Verify required TMDB stories exist
+        shell: bash
+        run: |
+          set -euo pipefail
+          for key in morning_series afternoon_anime evening_movie; do
+            title=$(jq -r ".${key}.title_en // empty" data/last-social-selection.json)
+            overview=$(jq -r ".${key}.overview_en // empty" data/last-social-selection.json)
+            id=$(jq -r ".${key}.tmdb_id // empty" data/last-social-selection.json)
+            if [ -z "$id" ] || [ -z "$title" ] || [ -z "$overview" ]; then
+              echo "❌ Missing TMDB ID, title or story for $key"
+              exit 1
+            fi
+          done
+          echo "✅ Every selected title has its own TMDB story summary"
+
+      - name: Commit today's selection and ID-bound images
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "cimaly-social-bot"
+          git config user.email "actions@github.com"
+
+          git add -- data/last-social-selection.json data/social-history.json
+          git add -- "public/social/daily/en/series-${SERIES_TMDB_ID}.jpg"
+          git add -- "public/social/daily/ar/series-${SERIES_TMDB_ID}.jpg"
+          git add -- "public/social/daily/en/anime-${ANIME_TMDB_ID}.jpg"
+          git add -- "public/social/daily/ar/anime-${ANIME_TMDB_ID}.jpg"
+          git add -- "public/social/daily/en/movie-${MOVIE_TMDB_ID}.jpg"
+          git add -- "public/social/daily/ar/movie-${MOVIE_TMDB_ID}.jpg"
+
+          if git diff --cached --quiet; then
+            echo "No daily content changes"
+          else
+            git commit -m "Prepare today's Cimaly TMDB social content"
+            git push origin HEAD:main
+          fi
 
       - name: Verify deployed ID-bound Cimaly image pack
         shell: bash
@@ -98,7 +153,10 @@ jobs:
 
       - name: Persist anti-duplicate publication history
         if: success()
+        shell: bash
         run: |
+          set -euo pipefail
+          git pull --rebase origin main
           git config user.name "cimaly-social-bot"
           git config user.email "actions@github.com"
 

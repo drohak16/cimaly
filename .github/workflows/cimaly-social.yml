@@ -2,28 +2,86 @@ name: Cimaly Daily Social
 
 on:
   workflow_dispatch:
-
-  schedule:
-    # 06:00 UTC = 09:00 Istanbul
-    - cron: "0 6 * * *"
+  workflow_run:
+    workflows:
+      - "Import Cimaly Images"
+    types:
+      - completed
 
 permissions:
   contents: read
 
+concurrency:
+  group: cimaly-buffer-publisher
+  cancel-in-progress: false
+
 jobs:
   cimaly-social:
+    if: >-
+      ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: main
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "22"
 
-      - name: Publish Cimaly visuals to Buffer
+      - name: Verify deployed Cimaly image pack
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          files=(
+            "en/series.jpg"
+            "ar/series.jpg"
+            "en/anime.jpg"
+            "ar/anime.jpg"
+            "en/movie.jpg"
+            "ar/movie.jpg"
+          )
+
+          for attempt in $(seq 1 20); do
+            echo "Deployment check attempt $attempt/20"
+            all_ok=true
+
+            for relative in "${files[@]}"; do
+              local_file="public/social/daily/$relative"
+              remote_file="/tmp/$(echo "$relative" | tr '/' '-')"
+              remote_url="https://cimaly.cc/social/daily/$relative?v=${GITHUB_RUN_ID}-${attempt}"
+
+              if ! curl --retry 2 --retry-delay 1 -fsSL "$remote_url" -o "$remote_file"; then
+                all_ok=false
+                break
+              fi
+
+              local_sha=$(sha256sum "$local_file" | awk '{print $1}')
+              remote_sha=$(sha256sum "$remote_file" | awk '{print $1}')
+
+              if [ "$local_sha" != "$remote_sha" ]; then
+                echo "Not deployed yet: $relative"
+                all_ok=false
+                break
+              fi
+            done
+
+            if [ "$all_ok" = true ]; then
+              echo "✅ Exact image pack is live on cimaly.cc"
+              exit 0
+            fi
+
+            sleep 15
+          done
+
+          echo "❌ Latest image pack did not become available on cimaly.cc"
+          exit 1
+
+      - name: Schedule Cimaly posts in Buffer
         env:
           BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
           BUFFER_CHANNEL_ID_FACEBOOK: ${{ secrets.BUFFER_CHANNEL_ID_FACEBOOK }}

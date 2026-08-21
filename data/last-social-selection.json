@@ -3,9 +3,9 @@
     "tmdb_id": 95350,
     "type": "tv",
     "year_date": "2026-08-16",
-    "popularity": 269.2111,
-    "vote_average": 8.1,
-    "vote_count": 86,
+    "popularity": 271.8148,
+    "vote_average": 8.111,
+    "vote_count": 122,
     "origin_country": [
       "US"
     ],
@@ -19,31 +19,31 @@
     "cimaly_url": "https://cimaly.cc/tv/95350"
   },
   "afternoon_anime": {
-    "tmdb_id": 283428,
+    "tmdb_id": 312949,
     "type": "tv",
-    "year_date": "2026-04-02",
-    "popularity": 91.6521,
-    "vote_average": 8.53,
-    "vote_count": 50,
+    "year_date": "2026-07-03",
+    "popularity": 52.0438,
+    "vote_average": 8.49,
+    "vote_count": 52,
     "origin_country": [
       "JP"
     ],
     "original_language": "ja",
-    "title_en": "The Ramparts of Ice",
+    "title_en": "Chainsmoker Cat",
     "title_ar": "",
-    "overview_en": "Weighed down by memories she can't shake, high schooler Koyuki Hikawa keeps everyone at arm's length — until three schoolmates draw her out of her shell.",
-    "overview_ar": "تثقل كاهل الطالبة الثانوية كويوكي هيكاوا ذكريات لا تستطيع نسيانها، فتبقي الجميع على مسافة منها - إلى أن يقوم ثلاثة من زملائها في المدرسة بإخراجها من عزلتها.",
-    "poster_original": "https://image.tmdb.org/t/p/original/rke9UC2QrogvxiQD9TGpbvqDosi.jpg",
-    "poster_w780": "https://image.tmdb.org/t/p/w780/rke9UC2QrogvxiQD9TGpbvqDosi.jpg",
-    "cimaly_url": "https://cimaly.cc/tv/283428"
+    "overview_en": "Catgirl Yani struggles to pay her rent and keep a job while feeding her smoking habit. As her loved ones' concerns grow, she must rethink her future.",
+    "overview_ar": "تكافح ياني، الفتاة القطة، لتسديد إيجارها والحفاظ على وظيفتها، بينما تنفق أموالها على تدخين السجائر. ومع تزايد قلق أحبائها، عليها أن تعيد التفكير في مستقبلها.",
+    "poster_original": "https://image.tmdb.org/t/p/original/kqeKlSd7o9BCbTraZsDnksRSfxm.jpg",
+    "poster_w780": "https://image.tmdb.org/t/p/w780/kqeKlSd7o9BCbTraZsDnksRSfxm.jpg",
+    "cimaly_url": "https://cimaly.cc/tv/312949"
   },
   "evening_movie": {
     "tmdb_id": 969681,
     "type": "movie",
     "year_date": "2026-07-29",
-    "popularity": 1911.7361,
-    "vote_average": 7.9,
-    "vote_count": 1875,
+    "popularity": 1819.537,
+    "vote_average": 7.889,
+    "vote_count": 1987,
     "origin_country": [
       "US"
     ],

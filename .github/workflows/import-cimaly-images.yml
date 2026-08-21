@@ -2,9 +2,16 @@ name: Import Cimaly Images
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - "data/social-image-urls.json"
 
 permissions:
   contents: write
+
+concurrency:
+  group: cimaly-image-import
+  cancel-in-progress: false
 
 jobs:
   import-images:
@@ -13,16 +20,17 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: main
 
       - name: Read image URLs
-        id: urls
         run: |
-          echo "SERIES_EN=$(jq -r '.series_en' data/social-image-urls.json)" >> $GITHUB_ENV
-          echo "SERIES_AR=$(jq -r '.series_ar' data/social-image-urls.json)" >> $GITHUB_ENV
-          echo "ANIME_EN=$(jq -r '.anime_en' data/social-image-urls.json)" >> $GITHUB_ENV
-          echo "ANIME_AR=$(jq -r '.anime_ar' data/social-image-urls.json)" >> $GITHUB_ENV
-          echo "MOVIE_EN=$(jq -r '.movie_en' data/social-image-urls.json)" >> $GITHUB_ENV
-          echo "MOVIE_AR=$(jq -r '.movie_ar' data/social-image-urls.json)" >> $GITHUB_ENV
+          echo "SERIES_EN=$(jq -r '.series_en' data/social-image-urls.json)" >> "$GITHUB_ENV"
+          echo "SERIES_AR=$(jq -r '.series_ar' data/social-image-urls.json)" >> "$GITHUB_ENV"
+          echo "ANIME_EN=$(jq -r '.anime_en' data/social-image-urls.json)" >> "$GITHUB_ENV"
+          echo "ANIME_AR=$(jq -r '.anime_ar' data/social-image-urls.json)" >> "$GITHUB_ENV"
+          echo "MOVIE_EN=$(jq -r '.movie_en' data/social-image-urls.json)" >> "$GITHUB_ENV"
+          echo "MOVIE_AR=$(jq -r '.movie_ar' data/social-image-urls.json)" >> "$GITHUB_ENV"
 
       - name: Validate URLs
         run: |
@@ -38,6 +46,14 @@ jobs:
               echo "Missing image URL"
               exit 1
             fi
+
+            case "$url" in
+              http://*|https://*) ;;
+              *)
+                echo "Invalid image URL: $url"
+                exit 1
+                ;;
+            esac
           done
 
       - name: Create folders
@@ -47,25 +63,28 @@ jobs:
 
       - name: Download Cimaly images
         run: |
-          curl -fL "$SERIES_EN" -o public/social/daily/en/series.jpg
-          curl -fL "$SERIES_AR" -o public/social/daily/ar/series.jpg
-
-          curl -fL "$ANIME_EN" -o public/social/daily/en/anime.jpg
-          curl -fL "$ANIME_AR" -o public/social/daily/ar/anime.jpg
-
-          curl -fL "$MOVIE_EN" -o public/social/daily/en/movie.jpg
-          curl -fL "$MOVIE_AR" -o public/social/daily/ar/movie.jpg
+          curl --retry 3 --retry-delay 2 -fL "$SERIES_EN" -o public/social/daily/en/series.jpg
+          curl --retry 3 --retry-delay 2 -fL "$SERIES_AR" -o public/social/daily/ar/series.jpg
+          curl --retry 3 --retry-delay 2 -fL "$ANIME_EN" -o public/social/daily/en/anime.jpg
+          curl --retry 3 --retry-delay 2 -fL "$ANIME_AR" -o public/social/daily/ar/anime.jpg
+          curl --retry 3 --retry-delay 2 -fL "$MOVIE_EN" -o public/social/daily/en/movie.jpg
+          curl --retry 3 --retry-delay 2 -fL "$MOVIE_AR" -o public/social/daily/ar/movie.jpg
 
       - name: Verify downloaded images
         run: |
-          test -s public/social/daily/en/series.jpg
-          test -s public/social/daily/ar/series.jpg
-          test -s public/social/daily/en/anime.jpg
-          test -s public/social/daily/ar/anime.jpg
-          test -s public/social/daily/en/movie.jpg
-          test -s public/social/daily/ar/movie.jpg
+          for file in \
+            public/social/daily/en/series.jpg \
+            public/social/daily/ar/series.jpg \
+            public/social/daily/en/anime.jpg \
+            public/social/daily/ar/anime.jpg \
+            public/social/daily/en/movie.jpg \
+            public/social/daily/ar/movie.jpg
+          do
+            test -s "$file"
+            file "$file" | grep -Eqi 'JPEG|PNG|WebP image data'
+          done
 
-          echo "✅ All 6 images downloaded"
+          echo "✅ All 6 images downloaded and validated"
 
       - name: Commit images
         run: |
@@ -78,5 +97,5 @@ jobs:
             echo "No image changes"
           else
             git commit -m "Update Cimaly branded social visuals"
-            git push
+            git push origin HEAD:main
           fi

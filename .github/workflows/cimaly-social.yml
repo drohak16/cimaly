@@ -9,7 +9,7 @@ on:
       - completed
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: cimaly-buffer-publisher
@@ -32,18 +32,24 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Verify deployed Cimaly image pack
+      - name: Read exact selected TMDB IDs
+        run: |
+          echo "SERIES_TMDB_ID=$(jq -r '.morning_series.tmdb_id' data/last-social-selection.json)" >> "$GITHUB_ENV"
+          echo "ANIME_TMDB_ID=$(jq -r '.afternoon_anime.tmdb_id' data/last-social-selection.json)" >> "$GITHUB_ENV"
+          echo "MOVIE_TMDB_ID=$(jq -r '.evening_movie.tmdb_id' data/last-social-selection.json)" >> "$GITHUB_ENV"
+
+      - name: Verify deployed ID-bound Cimaly image pack
         shell: bash
         run: |
           set -euo pipefail
 
           files=(
-            "en/series.jpg"
-            "ar/series.jpg"
-            "en/anime.jpg"
-            "ar/anime.jpg"
-            "en/movie.jpg"
-            "ar/movie.jpg"
+            "en/series-${SERIES_TMDB_ID}.jpg"
+            "ar/series-${SERIES_TMDB_ID}.jpg"
+            "en/anime-${ANIME_TMDB_ID}.jpg"
+            "ar/anime-${ANIME_TMDB_ID}.jpg"
+            "en/movie-${MOVIE_TMDB_ID}.jpg"
+            "ar/movie-${MOVIE_TMDB_ID}.jpg"
           )
 
           for attempt in $(seq 1 20); do
@@ -71,14 +77,14 @@ jobs:
             done
 
             if [ "$all_ok" = true ]; then
-              echo "✅ Exact image pack is live on cimaly.cc"
+              echo "✅ Exact TMDB-ID image pack is live on cimaly.cc"
               exit 0
             fi
 
             sleep 15
           done
 
-          echo "❌ Latest image pack did not become available on cimaly.cc"
+          echo "❌ Latest ID-bound image pack did not become available on cimaly.cc"
           exit 1
 
       - name: Schedule Cimaly posts in Buffer
@@ -89,3 +95,18 @@ jobs:
         run: |
           cp scripts/publish-buffer-daily.js /tmp/publish-buffer-daily.cjs
           node /tmp/publish-buffer-daily.cjs
+
+      - name: Persist anti-duplicate publication history
+        if: success()
+        run: |
+          git config user.name "cimaly-social-bot"
+          git config user.email "actions@github.com"
+
+          git add -- data/published-social-history.json
+
+          if git diff --cached --quiet; then
+            echo "No publication history changes"
+          else
+            git commit -m "Record published Cimaly social content"
+            git push origin HEAD:main
+          fi

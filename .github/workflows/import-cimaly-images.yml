@@ -23,14 +23,44 @@ jobs:
         with:
           ref: main
 
-      - name: Read image URLs
+      - name: Read selected content IDs
         run: |
+          echo "SERIES_TMDB_ID=$(jq -r '.morning_series.tmdb_id' data/last-social-selection.json)" >> "$GITHUB_ENV"
+          echo "ANIME_TMDB_ID=$(jq -r '.afternoon_anime.tmdb_id' data/last-social-selection.json)" >> "$GITHUB_ENV"
+          echo "MOVIE_TMDB_ID=$(jq -r '.evening_movie.tmdb_id' data/last-social-selection.json)" >> "$GITHUB_ENV"
+
+      - name: Read image pack metadata
+        run: |
+          echo "PACK_SERIES_TMDB_ID=$(jq -r '.series_tmdb_id' data/social-image-urls.json)" >> "$GITHUB_ENV"
+          echo "PACK_ANIME_TMDB_ID=$(jq -r '.anime_tmdb_id' data/social-image-urls.json)" >> "$GITHUB_ENV"
+          echo "PACK_MOVIE_TMDB_ID=$(jq -r '.movie_tmdb_id' data/social-image-urls.json)" >> "$GITHUB_ENV"
           echo "SERIES_EN=$(jq -r '.series_en' data/social-image-urls.json)" >> "$GITHUB_ENV"
           echo "SERIES_AR=$(jq -r '.series_ar' data/social-image-urls.json)" >> "$GITHUB_ENV"
           echo "ANIME_EN=$(jq -r '.anime_en' data/social-image-urls.json)" >> "$GITHUB_ENV"
           echo "ANIME_AR=$(jq -r '.anime_ar' data/social-image-urls.json)" >> "$GITHUB_ENV"
           echo "MOVIE_EN=$(jq -r '.movie_en' data/social-image-urls.json)" >> "$GITHUB_ENV"
           echo "MOVIE_AR=$(jq -r '.movie_ar' data/social-image-urls.json)" >> "$GITHUB_ENV"
+
+      - name: Validate strict TMDB binding
+        run: |
+          set -euo pipefail
+
+          test "$PACK_SERIES_TMDB_ID" = "$SERIES_TMDB_ID" || {
+            echo "❌ Series image pack TMDB ID does not match selected series"
+            exit 1
+          }
+
+          test "$PACK_ANIME_TMDB_ID" = "$ANIME_TMDB_ID" || {
+            echo "❌ Anime image pack TMDB ID does not match selected anime"
+            exit 1
+          }
+
+          test "$PACK_MOVIE_TMDB_ID" = "$MOVIE_TMDB_ID" || {
+            echo "❌ Movie image pack TMDB ID does not match selected movie"
+            exit 1
+          }
+
+          echo "✅ Image pack TMDB IDs match the selected content exactly"
 
       - name: Validate URLs
         run: |
@@ -61,41 +91,41 @@ jobs:
           mkdir -p public/social/daily/en
           mkdir -p public/social/daily/ar
 
-      - name: Download Cimaly images
+      - name: Download ID-bound Cimaly images
         run: |
-          curl --retry 3 --retry-delay 2 -fL "$SERIES_EN" -o public/social/daily/en/series.jpg
-          curl --retry 3 --retry-delay 2 -fL "$SERIES_AR" -o public/social/daily/ar/series.jpg
-          curl --retry 3 --retry-delay 2 -fL "$ANIME_EN" -o public/social/daily/en/anime.jpg
-          curl --retry 3 --retry-delay 2 -fL "$ANIME_AR" -o public/social/daily/ar/anime.jpg
-          curl --retry 3 --retry-delay 2 -fL "$MOVIE_EN" -o public/social/daily/en/movie.jpg
-          curl --retry 3 --retry-delay 2 -fL "$MOVIE_AR" -o public/social/daily/ar/movie.jpg
+          curl --retry 3 --retry-delay 2 -fL "$SERIES_EN" -o "public/social/daily/en/series-${SERIES_TMDB_ID}.jpg"
+          curl --retry 3 --retry-delay 2 -fL "$SERIES_AR" -o "public/social/daily/ar/series-${SERIES_TMDB_ID}.jpg"
+          curl --retry 3 --retry-delay 2 -fL "$ANIME_EN" -o "public/social/daily/en/anime-${ANIME_TMDB_ID}.jpg"
+          curl --retry 3 --retry-delay 2 -fL "$ANIME_AR" -o "public/social/daily/ar/anime-${ANIME_TMDB_ID}.jpg"
+          curl --retry 3 --retry-delay 2 -fL "$MOVIE_EN" -o "public/social/daily/en/movie-${MOVIE_TMDB_ID}.jpg"
+          curl --retry 3 --retry-delay 2 -fL "$MOVIE_AR" -o "public/social/daily/ar/movie-${MOVIE_TMDB_ID}.jpg"
 
       - name: Verify downloaded images
         run: |
           for file in \
-            public/social/daily/en/series.jpg \
-            public/social/daily/ar/series.jpg \
-            public/social/daily/en/anime.jpg \
-            public/social/daily/ar/anime.jpg \
-            public/social/daily/en/movie.jpg \
-            public/social/daily/ar/movie.jpg
+            "public/social/daily/en/series-${SERIES_TMDB_ID}.jpg" \
+            "public/social/daily/ar/series-${SERIES_TMDB_ID}.jpg" \
+            "public/social/daily/en/anime-${ANIME_TMDB_ID}.jpg" \
+            "public/social/daily/ar/anime-${ANIME_TMDB_ID}.jpg" \
+            "public/social/daily/en/movie-${MOVIE_TMDB_ID}.jpg" \
+            "public/social/daily/ar/movie-${MOVIE_TMDB_ID}.jpg"
           do
             test -s "$file"
             file "$file" | grep -Eqi 'JPEG|PNG|WebP image data'
           done
 
-          echo "✅ All 6 images downloaded and validated"
+          echo "✅ All 6 ID-bound images downloaded and validated"
 
       - name: Commit images
         run: |
           git config user.name "cimaly-social-bot"
           git config user.email "actions@github.com"
 
-          git add public/social/daily
+          git add -- public/social/daily
 
           if git diff --cached --quiet; then
             echo "No image changes"
           else
-            git commit -m "Update Cimaly branded social visuals"
+            git commit -m "Update ID-bound Cimaly social visuals"
             git push origin HEAD:main
           fi

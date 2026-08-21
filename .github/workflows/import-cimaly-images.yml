@@ -1,0 +1,45 @@
+name: Import Cimaly Images
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  import-images:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create folders
+        run: |
+          mkdir -p public/social/daily/en
+          mkdir -p public/social/daily/ar
+
+      - name: Download Cimaly visuals
+        run: |
+          curl -L "https://d2ol7oe51mr4n9.cloudfront.net/user_3HGxDNEsLbirGFvK6UXrvXfJQ3W/ac377476-8646-43b1-a95d-9683b6ebd983.jpg" -o public/social/daily/en/series.jpg
+
+          curl -L "https://d2ol7oe51mr4n9.cloudfront.net/user_3HGxDNEsLbirGFvK6UXrvXfJQ3W/dcf13241-139a-4e32-9828-e5bc1ccc5dfc.jpg" -o public/social/daily/ar/series.jpg
+
+          curl -L "https://d2ol7oe51mr4n9.cloudfront.net/user_3HGxDNEsLbirGFvK6UXrvXfJQ3W/0549deab-0303-4d35-bb8a-35da3c16d436.jpg" -o public/social/daily/en/movie.jpg
+
+          curl -L "https://d2ol7oe51mr4n9.cloudfront.net/user_3HGxDNEsLbirGFvK6UXrvXfJQ3W/4f74e359-cfdf-4677-b00b-39117c143e58.jpg" -o public/social/daily/ar/movie.jpg
+
+          curl -L "https://d2ol7oe51mr4n9.cloudfront.net/user_3HGxDNEsLbirGFvK6UXrvXfJQ3W/de8be26b-6546-4f3d-8e26-3f2e0eb3dcb8.jpg" -o public/social/daily/en/anime.jpg
+
+          curl -L "https://d2ol7oe51mr4n9.cloudfront.net/user_3HGxDNEsLbirGFvK6UXrvXfJQ3W/0efe19c6-061d-452e-b8f2-265efea40020.jpg" -o public/social/daily/ar/anime.jpg
+
+      - name: Commit images
+        run: |
+          git config user.name "cimaly-social-bot"
+          git config user.email "actions@github.com"
+
+          git add public/social/daily
+
+          git commit -m "Import Cimaly branded social visuals" || echo "No changes"
+
+          git push

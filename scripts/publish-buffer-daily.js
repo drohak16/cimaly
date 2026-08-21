@@ -4,9 +4,6 @@ const REQUIRED = [
   "BUFFER_API_KEY",
   "BUFFER_CHANNEL_ID_FACEBOOK",
   "BUFFER_CHANNEL_ID_INSTAGRAM",
-  "SUPABASE_URL",
-  "SUPABASE_SECRET_KEY",
-  "SUPABASE_BUCKET",
 ];
 
 for (const key of REQUIRED) {
@@ -19,10 +16,6 @@ const cfg = {
   bufferApiKey: process.env.BUFFER_API_KEY,
   facebookChannelId: process.env.BUFFER_CHANNEL_ID_FACEBOOK,
   instagramChannelId: process.env.BUFFER_CHANNEL_ID_INSTAGRAM,
-
-  supabaseUrl: process.env.SUPABASE_URL,
-  supabaseSecretKey: process.env.SUPABASE_SECRET_KEY,
-  supabaseBucket: process.env.SUPABASE_BUCKET,
 };
 
 const DAILY_ITEMS = [
@@ -90,59 +83,22 @@ Watch now on cimaly.cc
 شاهد الآن على cimaly.cc`;
 }
 
-async function createSignedUrl(path, expiresIn = 3600) {
-  const response = await fetch(
-    `${cfg.supabaseUrl}/storage/v1/object/sign/${cfg.supabaseBucket}/${path}`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        apikey: cfg.supabaseSecretKey,
-        Authorization: `Bearer ${cfg.supabaseSecretKey}`,
-      },
-      body: JSON.stringify({
-        expiresIn,
-      }),
-    }
-  );
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(
-      `Supabase signed URL error ${response.status}: ${JSON.stringify(data)}`
-    );
-  }
-
-  if (!data?.signedURL) {
-    throw new Error(
-      `Supabase did not return signedURL for path: ${path}`
-    );
-  }
-
-  return `${cfg.supabaseUrl}/storage/v1${data.signedURL}`;
+function buildPublicImageUrls(item) {
+  return [
+    `https://cimaly.cc/social/daily/en/${item.key}.jpg`,
+    `https://cimaly.cc/social/daily/ar/${item.key}.jpg`,
+  ];
 }
 
-async function checkFileExists(path) {
-  const response = await fetch(
-    `${cfg.supabaseUrl}/storage/v1/object/info/${cfg.supabaseBucket}/${path}`,
-    {
-      method: "GET",
-      headers: {
-        apikey: cfg.supabaseSecretKey,
-        Authorization: `Bearer ${cfg.supabaseSecretKey}`,
-      },
-    }
-  );
-
-  if (response.status === 404) {
-    return false;
-  }
+async function checkPublicImage(url) {
+  const response = await fetch(url, {
+    method: "HEAD",
+    redirect: "follow",
+  });
 
   if (!response.ok) {
-    const text = await response.text();
     throw new Error(
-      `Supabase file check error ${response.status}: ${text}`
+      `Image inaccessible: ${url} | HTTP ${response.status}`
     );
   }
 
@@ -236,34 +192,23 @@ async function processItem(item) {
   console.log(`Processing ${item.key}`);
   console.log("================================");
 
-  const pathEn = `daily/en/${item.key}.jpg`;
-  const pathAr = `daily/ar/${item.key}.jpg`;
+  const imageUrls = buildPublicImageUrls(item);
 
-  console.log(`Checking EN file: ${pathEn}`);
-  console.log(`Checking AR file: ${pathAr}`);
+  console.log("Checking public images...");
+  console.log(imageUrls[0]);
+  console.log(imageUrls[1]);
 
-  const [existsEn, existsAr] = await Promise.all([
-    checkFileExists(pathEn),
-    checkFileExists(pathAr),
-  ]);
+  await Promise.all(
+    imageUrls.map((url) => checkPublicImage(url))
+  );
 
-  if (!existsEn || !existsAr) {
-    console.log(`SKIPPING ${item.key}`);
-    console.log(`EN exists: ${existsEn}`);
-    console.log(`AR exists: ${existsAr}`);
-    return;
-  }
+  console.log("✅ Both images are publicly accessible");
 
-  const [signedEn, signedAr] = await Promise.all([
-    createSignedUrl(pathEn),
-    createSignedUrl(pathAr),
-  ]);
+  const dueAt = getIstanbulSchedule(
+    item.hour,
+    item.minute
+  );
 
-  console.log(`EN signed URL ready`);
-  console.log(`AR signed URL ready`);
-
-  const imageUrls = [signedEn, signedAr];
-  const dueAt = getIstanbulSchedule(item.hour, item.minute);
   const text = buildCaption(item);
 
   const channels = [
@@ -278,7 +223,9 @@ async function processItem(item) {
   ];
 
   for (const channel of channels) {
-    console.log(`Scheduling ${item.key} on ${channel.name}...`);
+    console.log(
+      `Scheduling ${item.key} on ${channel.name}...`
+    );
 
     const post = await createBufferPost({
       channelId: channel.id,
@@ -287,21 +234,27 @@ async function processItem(item) {
       imageUrls,
     });
 
-    console.log(`SUCCESS ${channel.name}`);
+    console.log(`✅ SUCCESS ${channel.name}`);
     console.log(`Buffer Post ID: ${post.id}`);
   }
 
-  console.log(`${item.key} scheduled for ${dueAt}`);
+  console.log(
+    `${item.key} scheduled for ${dueAt}`
+  );
 }
 
 async function main() {
-  console.log("Starting Cimaly automatic Buffer publisher with Supabase...");
+  console.log(
+    "Starting Cimaly Buffer publisher with public GitHub/Cloudflare images..."
+  );
 
   for (const item of DAILY_ITEMS) {
     try {
       await processItem(item);
     } catch (error) {
-      console.error(`ERROR while processing ${item.key}`);
+      console.error(
+        `❌ ERROR while processing ${item.key}`
+      );
       console.error(error.message);
       process.exitCode = 1;
     }

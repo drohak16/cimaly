@@ -86,4 +86,6 @@ jobs:
           BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
           BUFFER_CHANNEL_ID_FACEBOOK: ${{ secrets.BUFFER_CHANNEL_ID_FACEBOOK }}
           BUFFER_CHANNEL_ID_INSTAGRAM: ${{ secrets.BUFFER_CHANNEL_ID_INSTAGRAM }}
-        run: node scripts/publish-buffer-daily.js
+        run: |
+          cp scripts/publish-buffer-daily.js /tmp/publish-buffer-daily.cjs
+          node /tmp/publish-buffer-daily.cjs

@@ -66,8 +66,6 @@ function getIstanbulSchedule(hour, minute) {
     Date.UTC(year, month - 1, day, hour - 3, minute, 0)
   );
 
-  // Si l'heure d'aujourd'hui est déjà passée,
-  // programme pour demain.
   if (due <= now) {
     due = new Date(
       Date.UTC(year, month - 1, day + 1, hour - 3, minute, 0)
@@ -105,10 +103,6 @@ async function checkPublicImage(url) {
   }
 }
 
-/*
-  Buffer metadata differs by network.
-*/
-
 function buildMetadata(network) {
   if (network === "facebook") {
     return `
@@ -125,6 +119,7 @@ function buildMetadata(network) {
       metadata: {
         instagram: {
           type: post
+          shouldShareToFeed: true
         }
       }
     `;
@@ -160,15 +155,12 @@ async function createBufferPost({
         input: {
           text: ${JSON.stringify(text)}
           channelId: ${JSON.stringify(channelId)}
-
           schedulingType: automatic
           mode: customScheduled
           dueAt: ${JSON.stringify(dueAt)}
-
           assets: [
             ${assets}
           ]
-
           ${metadata}
         }
       ) {
@@ -188,42 +180,24 @@ async function createBufferPost({
 
   const response = await fetch(BUFFER_API_URL, {
     method: "POST",
-
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${cfg.bufferApiKey}`,
     },
-
-    body: JSON.stringify({
-      query,
-    }),
+    body: JSON.stringify({ query }),
   });
 
-  let data;
-
-  try {
-    data = await response.json();
-  } catch {
-    const textResponse = await response.text();
-
-    throw new Error(
-      `Buffer returned invalid JSON: ${textResponse}`
-    );
-  }
+  const data = await response.json();
 
   if (!response.ok) {
     throw new Error(
-      `Buffer HTTP error ${response.status}: ${JSON.stringify(
-        data
-      )}`
+      `Buffer HTTP error ${response.status}: ${JSON.stringify(data)}`
     );
   }
 
   if (data.errors?.length) {
     throw new Error(
-      `Buffer GraphQL error: ${JSON.stringify(
-        data.errors
-      )}`
+      `Buffer GraphQL error: ${JSON.stringify(data.errors)}`
     );
   }
 
@@ -231,16 +205,12 @@ async function createBufferPost({
 
   if (!result) {
     throw new Error(
-      `Unexpected Buffer response: ${JSON.stringify(
-        data
-      )}`
+      `Unexpected Buffer response: ${JSON.stringify(data)}`
     );
   }
 
   if (result.message) {
-    throw new Error(
-      `Buffer error: ${result.message}`
-    );
+    throw new Error(`Buffer error: ${result.message}`);
   }
 
   return result.post;
@@ -256,9 +226,7 @@ async function publishToChannel({
   dueAt,
 }) {
   console.log("");
-  console.log(
-    `Scheduling ${item.key} on ${name}...`
-  );
+  console.log(`Scheduling ${item.key} on ${name}...`);
 
   const post = await createBufferPost({
     network,
@@ -276,134 +244,79 @@ async function publishToChannel({
 
 async function processItem(item) {
   console.log("");
-  console.log(
-    "================================"
-  );
+  console.log("================================");
+  console.log(`Processing ${item.key}`);
+  console.log("================================");
 
-  console.log(
-    `Processing ${item.key}`
-  );
+  const imageUrls = buildPublicImageUrls(item);
 
-  console.log(
-    "================================"
-  );
-
-  const imageUrls =
-    buildPublicImageUrls(item);
-
-  console.log(
-    "Checking public images..."
-  );
-
+  console.log("Checking public images...");
   console.log(imageUrls[0]);
   console.log(imageUrls[1]);
 
   await Promise.all(
-    imageUrls.map((url) =>
-      checkPublicImage(url)
-    )
+    imageUrls.map((url) => checkPublicImage(url))
   );
 
-  console.log(
-    "✅ Both images are publicly accessible"
+  console.log("✅ Both images are publicly accessible");
+
+  const dueAt = getIstanbulSchedule(
+    item.hour,
+    item.minute
   );
 
-  const dueAt =
-    getIstanbulSchedule(
-      item.hour,
-      item.minute
-    );
-
-  const text =
-    buildCaption(item);
-
-  /*
-    Facebook
-  */
+  const text = buildCaption(item);
 
   try {
     await publishToChannel({
       network: "facebook",
       name: "Facebook",
-      channelId:
-        cfg.facebookChannelId,
+      channelId: cfg.facebookChannelId,
       item,
       imageUrls,
       text,
       dueAt,
     });
   } catch (error) {
-    console.error(
-      `❌ Facebook failed for ${item.key}`
-    );
-
-    console.error(
-      error.message
-    );
-
+    console.error(`❌ Facebook failed for ${item.key}`);
+    console.error(error.message);
     process.exitCode = 1;
   }
-
-  /*
-    Instagram
-  */
 
   try {
     await publishToChannel({
       network: "instagram",
       name: "Instagram",
-      channelId:
-        cfg.instagramChannelId,
+      channelId: cfg.instagramChannelId,
       item,
       imageUrls,
       text,
       dueAt,
     });
   } catch (error) {
-    console.error(
-      `❌ Instagram failed for ${item.key}`
-    );
-
-    console.error(
-      error.message
-    );
-
+    console.error(`❌ Instagram failed for ${item.key}`);
+    console.error(error.message);
     process.exitCode = 1;
   }
 
   console.log("");
-  console.log(
-    `${item.key} target schedule: ${dueAt}`
-  );
+  console.log(`${item.key} target schedule: ${dueAt}`);
 }
 
 async function main() {
-  console.log(
-    "Starting Cimaly Buffer publisher..."
-  );
-
-  console.log(
-    "Image source: cimaly.cc"
-  );
+  console.log("Starting Cimaly Buffer publisher...");
+  console.log("Image source: cimaly.cc");
 
   for (const item of DAILY_ITEMS) {
     await processItem(item);
   }
 
   console.log("");
-  console.log(
-    "Cimaly publisher finished."
-  );
+  console.log("Cimaly publisher finished.");
 }
 
 main().catch((error) => {
-  console.error(
-    "Fatal error:"
-  );
-
-  console.error(
-    error
-  );
-
+  console.error("Fatal error:");
+  console.error(error);
   process.exit(1);
 });

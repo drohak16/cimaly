@@ -2,6 +2,8 @@ const fs = require("fs");
 
 const BUFFER_API_URL = "https://api.buffer.com";
 const SELECTION_FILE = "data/last-social-selection.json";
+const PUBLISHED_HISTORY_FILE = "data/published-social-history.json";
+const ANTI_DUPLICATE_DAYS = 60;
 
 const REQUIRED = [
   "BUFFER_API_KEY",
@@ -29,41 +31,140 @@ const DAILY_ITEMS = [
   {
     key: "series",
     dataKey: "morning_series",
+    expectedType: "tv",
     hour: 10,
     minute: 0,
     emoji: "📺",
     labelEn: "SERIES PICK",
     labelAr: "اختيار مسلسل",
-    hashtags:
-      "#Cimaly #Series #TVSeries #Streaming #WatchNow",
+    hashtags: "#Cimaly #Series #TVSeries #Streaming #WatchNow",
   },
   {
     key: "anime",
     dataKey: "afternoon_anime",
+    expectedType: "tv",
     hour: 16,
     minute: 0,
     emoji: "✨",
     labelEn: "ANIME PICK",
     labelAr: "اختيار أنمي",
-    hashtags:
-      "#Cimaly #Anime #AnimeSeries #Streaming #WatchNow",
+    hashtags: "#Cimaly #Anime #AnimeSeries #Streaming #WatchNow",
   },
   {
     key: "movie",
     dataKey: "evening_movie",
+    expectedType: "movie",
     hour: 20,
     minute: 30,
     emoji: "🎬",
     labelEn: "MOVIE PICK",
     labelAr: "اختيار فيلم",
-    hashtags:
-      "#Cimaly #Movie #Movies #Cinema #Streaming #WatchNow",
+    hashtags: "#Cimaly #Movie #Movies #Cinema #Streaming #WatchNow",
   },
 ];
 
+function loadHistory() {
+  try {
+    if (!fs.existsSync(PUBLISHED_HISTORY_FILE)) return { items: [] };
+    const parsed = JSON.parse(fs.readFileSync(PUBLISHED_HISTORY_FILE, "utf8"));
+    return { items: Array.isArray(parsed.items) ? parsed.items : [] };
+  } catch {
+    return { items: [] };
+  }
+}
+
+function saveHistory(history) {
+  fs.writeFileSync(
+    PUBLISHED_HISTORY_FILE,
+    `${JSON.stringify(history, null, 2)}\n`,
+    "utf8"
+  );
+}
+
+function cutoffDate(days) {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() - days);
+  return d.toISOString();
+}
+
+function contentKey(data) {
+  return `${data.type}:${Number(data.tmdb_id)}`;
+}
+
+function validateBoundContent(item, data) {
+  if (!data || typeof data !== "object") {
+    throw new Error(`Missing selected content for ${item.dataKey}`);
+  }
+
+  if (!Number.isInteger(Number(data.tmdb_id)) || Number(data.tmdb_id) <= 0) {
+    throw new Error(`Invalid TMDB ID for ${item.key}`);
+  }
+
+  if (data.type !== item.expectedType) {
+    throw new Error(
+      `Content type mismatch for ${item.key}: expected ${item.expectedType}, got ${data.type}`
+    );
+  }
+
+  if (!String(data.title_en || "").trim()) {
+    throw new Error(`Missing title for ${item.key} TMDB ${data.tmdb_id}`);
+  }
+
+  if (!String(data.overview_en || "").trim()) {
+    throw new Error(
+      `Missing TMDB story overview for ${data.title_en} (${data.tmdb_id}); refusing to publish a generic or unrelated description.`
+    );
+  }
+
+  const expectedUrl =
+    data.type === "movie"
+      ? `https://cimaly.cc/movie/${data.tmdb_id}`
+      : `https://cimaly.cc/tv/${data.tmdb_id}`;
+
+  if (data.cimaly_url !== expectedUrl) {
+    throw new Error(
+      `Cimaly URL mismatch for ${data.title_en}: expected ${expectedUrl}, got ${data.cimaly_url}`
+    );
+  }
+
+  return data;
+}
+
+function assertNotRecentlyPublished(data, history) {
+  const key = contentKey(data);
+  const cutoff = cutoffDate(ANTI_DUPLICATE_DAYS);
+
+  const duplicate = history.items.some(
+    (entry) => entry.content_key === key && String(entry.published_at || "") >= cutoff
+  );
+
+  if (duplicate) {
+    throw new Error(
+      `Duplicate blocked: ${data.title_en} (${key}) was already published within ${ANTI_DUPLICATE_DAYS} days.`
+    );
+  }
+}
+
+function recordPublished(data, item, history) {
+  const now = new Date().toISOString();
+  history.items.push({
+    content_key: contentKey(data),
+    tmdb_id: Number(data.tmdb_id),
+    type: data.type,
+    title_en: data.title_en,
+    slot: item.key,
+    published_at: now,
+  });
+
+  const keepFrom = cutoffDate(365);
+  history.items = history.items.filter(
+    (entry) => String(entry.published_at || "") >= keepFrom
+  );
+  saveHistory(history);
+}
+
 function getIstanbulSchedule(hour, minute) {
   const now = new Date();
-
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Istanbul",
     year: "numeric",
@@ -71,168 +172,68 @@ function getIstanbulSchedule(hour, minute) {
     day: "2-digit",
   }).formatToParts(now);
 
-  const get = (type) =>
-    parts.find((p) => p.type === type)?.value;
-
+  const get = (type) => parts.find((p) => p.type === type)?.value;
   const year = Number(get("year"));
   const month = Number(get("month"));
   const day = Number(get("day"));
 
-  let due = new Date(
-    Date.UTC(
-      year,
-      month - 1,
-      day,
-      hour - 3,
-      minute,
-      0
-    )
-  );
-
+  let due = new Date(Date.UTC(year, month - 1, day, hour - 3, minute, 0));
   if (due <= now) {
-    due = new Date(
-      Date.UTC(
-        year,
-        month - 1,
-        day + 1,
-        hour - 3,
-        minute,
-        0
-      )
-    );
+    due = new Date(Date.UTC(year, month - 1, day + 1, hour - 3, minute, 0));
   }
-
   return due.toISOString();
 }
 
-function shortOverview(text, max = 210) {
-  if (!text) {
-    return "Discover today's Cimaly pick and step into a story worth watching.";
-  }
-
-  const clean = text
-    .replace(/\s+/g, " ")
-    .trim();
-
-  if (clean.length <= max) {
-    return clean;
-  }
+function shortOverview(text, max = 240) {
+  const clean = String(text || "").replace(/\s+/g, " ").trim();
+  if (!clean) return "";
+  if (clean.length <= max) return clean;
 
   const cut = clean.slice(0, max);
   const lastSpace = cut.lastIndexOf(" ");
-
-  return `${cut
-    .slice(
-      0,
-      lastSpace > 120 ? lastSpace : max
-    )
-    .trim()}…`;
+  return `${cut.slice(0, lastSpace > 120 ? lastSpace : max).trim()}…`;
 }
 
-function buildCaption(item) {
-  const data = selection[item.dataKey] || {};
-
-  const titleEn =
-    data.title_en || item.labelEn;
-
-  const titleAr =
-    data.title_ar || titleEn;
-
-  const introEn =
-    shortOverview(data.overview_en);
-
+function buildCaption(item, data) {
+  const titleEn = data.title_en;
+  const titleAr = data.title_ar || titleEn;
+  const introEn = shortOverview(data.overview_en, 240);
   const introAr = data.overview_ar
-    ? shortOverview(
-        data.overview_ar,
-        180
-      )
-    : "اكتشف اختيار اليوم على Cimaly واستمتع بقصة تستحق المشاهدة.";
+    ? shortOverview(data.overview_ar, 210)
+    : introEn;
 
-  const watchUrl =
-    data.cimaly_url ||
-    "https://cimaly.cc";
-
-  return `${item.emoji} ${item.labelEn} | ${item.labelAr}
-
-${titleEn}
-${titleAr}
-
-${introEn}
-
-${introAr}
-
-▶️ Watch now | شاهد الآن
-${watchUrl}
-
-${item.hashtags}`;
+  return `${item.emoji} ${item.labelEn} | ${item.labelAr}\n\n${titleEn}\n${titleAr}\n\n${introEn}\n\n${introAr}\n\n▶️ Watch now | شاهد الآن\n${data.cimaly_url}\n\n${item.hashtags}`;
 }
 
-function buildPublicImageUrls(item) {
+function buildPublicImageUrls(item, data) {
+  const id = Number(data.tmdb_id);
   return [
-    `https://cimaly.cc/social/daily/en/${item.key}.jpg`,
-    `https://cimaly.cc/social/daily/ar/${item.key}.jpg`,
+    `https://cimaly.cc/social/daily/en/${item.key}-${id}.jpg`,
+    `https://cimaly.cc/social/daily/ar/${item.key}-${id}.jpg`,
   ];
 }
 
 async function checkPublicImage(url) {
-  const response = await fetch(url, {
-    method: "HEAD",
-    redirect: "follow",
-  });
-
+  const response = await fetch(url, { method: "HEAD", redirect: "follow" });
   if (!response.ok) {
-    throw new Error(
-      `Image inaccessible: ${url} | HTTP ${response.status}`
-    );
+    throw new Error(`Image inaccessible: ${url} | HTTP ${response.status}`);
   }
 }
 
 function buildMetadata(network) {
   if (network === "facebook") {
-    return `
-      metadata: {
-        facebook: {
-          type: post
-        }
-      }
-    `;
+    return `metadata: { facebook: { type: post } }`;
   }
-
   if (network === "instagram") {
-    return `
-      metadata: {
-        instagram: {
-          type: post
-          shouldShareToFeed: true
-        }
-      }
-    `;
+    return `metadata: { instagram: { type: post shouldShareToFeed: true } }`;
   }
-
   return "";
 }
 
-async function createBufferPost({
-  network,
-  channelId,
-  text,
-  dueAt,
-  imageUrls,
-}) {
+async function createBufferPost({ network, channelId, text, dueAt, imageUrls }) {
   const assets = imageUrls
-    .map(
-      (url) => `
-        {
-          image: {
-            url: ${JSON.stringify(url)}
-          }
-        }
-      `
-    )
+    .map((url) => `{ image: { url: ${JSON.stringify(url)} } }`)
     .join(",");
-
-  const metadata =
-    buildMetadata(network);
 
   const query = `
     mutation CreatePost {
@@ -243,263 +244,143 @@ async function createBufferPost({
           schedulingType: automatic
           mode: customScheduled
           dueAt: ${JSON.stringify(dueAt)}
-          assets: [
-            ${assets}
-          ]
-          ${metadata}
+          assets: [${assets}]
+          ${buildMetadata(network)}
         }
       ) {
-        ... on PostActionSuccess {
-          post {
-            id
-            text
-          }
-        }
-
-        ... on MutationError {
-          message
-        }
+        ... on PostActionSuccess { post { id text } }
+        ... on MutationError { message }
       }
     }
   `;
 
-  const response = await fetch(
-    BUFFER_API_URL,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type":
-          "application/json",
-        Authorization:
-          `Bearer ${cfg.bufferApiKey}`,
-      },
-      body: JSON.stringify({
-        query,
-      }),
-    }
-  );
+  const response = await fetch(BUFFER_API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${cfg.bufferApiKey}`,
+    },
+    body: JSON.stringify({ query }),
+  });
 
-  const data =
-    await response.json();
-
+  const data = await response.json();
   if (!response.ok) {
-    throw new Error(
-      `Buffer HTTP error ${response.status}: ${JSON.stringify(
-        data
-      )}`
-    );
+    throw new Error(`Buffer HTTP error ${response.status}: ${JSON.stringify(data)}`);
   }
-
   if (data.errors?.length) {
-    throw new Error(
-      `Buffer GraphQL error: ${JSON.stringify(
-        data.errors
-      )}`
-    );
+    throw new Error(`Buffer GraphQL error: ${JSON.stringify(data.errors)}`);
   }
 
-  const result =
-    data.data?.createPost;
-
+  const result = data.data?.createPost;
   if (!result) {
-    throw new Error(
-      `Unexpected Buffer response: ${JSON.stringify(
-        data
-      )}`
-    );
+    throw new Error(`Unexpected Buffer response: ${JSON.stringify(data)}`);
   }
-
   if (result.message) {
-    throw new Error(
-      `Buffer error: ${result.message}`
-    );
+    throw new Error(`Buffer error: ${result.message}`);
   }
-
   return result.post;
 }
 
 function isDuplicateError(error) {
-  const msg = String(
-    error?.message || error
-  ).toLowerCase();
-
+  const msg = String(error?.message || error).toLowerCase();
   return (
-    msg.includes(
-      "already got this one scheduled"
-    ) ||
-    msg.includes(
-      "same thing twice"
-    ) ||
-    (
-      msg.includes("already") &&
-      msg.includes("scheduled")
-    )
+    msg.includes("already got this one scheduled") ||
+    msg.includes("same thing twice") ||
+    (msg.includes("already") && msg.includes("scheduled"))
   );
 }
 
-async function publishToChannel({
-  network,
-  name,
-  channelId,
-  item,
-  imageUrls,
-  text,
-  dueAt,
-}) {
-  console.log("");
-  console.log(
-    `Scheduling ${item.key} on ${name}...`
-  );
-
+async function publishToChannel({ network, name, channelId, item, imageUrls, text, dueAt }) {
+  console.log(`\nScheduling ${item.key} on ${name}...`);
   try {
-    const post =
-      await createBufferPost({
-        network,
-        channelId,
-        text,
-        dueAt,
-        imageUrls,
-      });
-
-    console.log(
-      `✅ SUCCESS ${name}`
-    );
-
-    console.log(
-      `Buffer Post ID: ${post.id}`
-    );
-
+    const post = await createBufferPost({
+      network,
+      channelId,
+      text,
+      dueAt,
+      imageUrls,
+    });
+    console.log(`✅ SUCCESS ${name} | Buffer Post ID: ${post.id}`);
     return true;
   } catch (error) {
     if (isDuplicateError(error)) {
-      console.log(
-        `⚠️ ${name}: duplicate already scheduled — skipped safely.`
-      );
-
+      console.log(`⚠️ ${name}: duplicate already scheduled — skipped safely.`);
       return true;
     }
-
-    console.error(
-      `❌ ${name} failed for ${item.key}`
-    );
-
-    console.error(
-      error.message
-    );
-
+    console.error(`❌ ${name} failed for ${item.key}`);
+    console.error(error.message);
     return false;
   }
 }
 
-async function processItem(item) {
-  console.log("");
-  console.log(
-    "================================"
-  );
-  console.log(
-    `Processing ${item.key}`
-  );
-  console.log(
-    "================================"
-  );
+async function processItem(item, history) {
+  console.log(`\n================================\nProcessing ${item.key}\n================================`);
 
-  const imageUrls =
-    buildPublicImageUrls(item);
+  const data = validateBoundContent(item, selection[item.dataKey]);
+  assertNotRecentlyPublished(data, history);
 
-  console.log(
-    "Checking public images..."
-  );
+  const imageUrls = buildPublicImageUrls(item, data);
+  console.log(`🔒 Bound content: ${contentKey(data)} | ${data.title_en}`);
+  console.log("Checking ID-bound public images...");
+  console.log(imageUrls.join("\n"));
+  await Promise.all(imageUrls.map(checkPublicImage));
+  console.log("✅ Exact TMDB-ID image pair is publicly accessible");
 
-  console.log(
-    imageUrls.join("\n")
-  );
+  const dueAt = getIstanbulSchedule(item.hour, item.minute);
+  const text = buildCaption(item, data);
 
-  await Promise.all(
-    imageUrls.map(
-      checkPublicImage
-    )
-  );
+  const facebookOk = await publishToChannel({
+    network: "facebook",
+    name: "Facebook",
+    channelId: cfg.facebookChannelId,
+    item,
+    imageUrls,
+    text,
+    dueAt,
+  });
 
-  console.log(
-    "✅ Both images are publicly accessible"
-  );
+  const instagramOk = await publishToChannel({
+    network: "instagram",
+    name: "Instagram",
+    channelId: cfg.instagramChannelId,
+    item,
+    imageUrls,
+    text,
+    dueAt,
+  });
 
-  const dueAt =
-    getIstanbulSchedule(
-      item.hour,
-      item.minute
-    );
+  if (facebookOk && instagramOk) {
+    recordPublished(data, item, history);
+    console.log(`✅ Publication history recorded for ${contentKey(data)}`);
+    return true;
+  }
 
-  const text =
-    buildCaption(item);
-
-  let ok = true;
-
-  ok =
-    (await publishToChannel({
-      network: "facebook",
-      name: "Facebook",
-      channelId:
-        cfg.facebookChannelId,
-      item,
-      imageUrls,
-      text,
-      dueAt,
-    })) && ok;
-
-  ok =
-    (await publishToChannel({
-      network: "instagram",
-      name: "Instagram",
-      channelId:
-        cfg.instagramChannelId,
-      item,
-      imageUrls,
-      text,
-      dueAt,
-    })) && ok;
-
-  console.log("");
-  console.log(
-    `${item.key} target schedule: ${dueAt}`
-  );
-
-  return ok;
+  return false;
 }
 
 async function main() {
-  console.log(
-    "Starting Cimaly Buffer publisher..."
-  );
+  console.log("Starting Cimaly Buffer publisher...");
+  console.log("Strict binding: TMDB ID + title + story + Cimaly URL + image filenames");
+  console.log(`Anti-duplicate window: ${ANTI_DUPLICATE_DAYS} days`);
 
-  console.log(
-    "Image source: cimaly.cc"
-  );
-
+  const history = loadHistory();
   let allOk = true;
 
   for (const item of DAILY_ITEMS) {
-    allOk =
-      (await processItem(item)) &&
-      allOk;
+    try {
+      allOk = (await processItem(item, history)) && allOk;
+    } catch (error) {
+      console.error(`❌ BLOCKED ${item.key}: ${error.message}`);
+      allOk = false;
+    }
   }
 
-  console.log("");
-  console.log(
-    "Cimaly publisher finished."
-  );
-
-  if (!allOk) {
-    process.exitCode = 1;
-  }
+  console.log("\nCimaly publisher finished.");
+  if (!allOk) process.exitCode = 1;
 }
 
 main().catch((error) => {
-  console.error(
-    "Fatal error:"
-  );
-
+  console.error("Fatal error:");
   console.error(error);
-
   process.exit(1);
 });

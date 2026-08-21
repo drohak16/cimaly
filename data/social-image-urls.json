@@ -1,9 +1,12 @@
 {
+  "series_tmdb_id": 95350,
   "series_en": "https://d2ol7oe51mr4n9.cloudfront.net/user_3HGxDNEsLbirGFvK6UXrvXfJQ3W/ac377476-8646-43b1-a95d-9683b6ebd983.jpg",
   "series_ar": "https://d2ol7oe51mr4n9.cloudfront.net/user_3HGxDNEsLbirGFvK6UXrvXfJQ3W/dcf13241-139a-4e32-9828-e5bc1ccc5dfc.jpg",
+  "anime_tmdb_id": 312949,
   "anime_en": "https://d2ol7oe51mr4n9.cloudfront.net/user_3HGxDNEsLbirGFvK6UXrvXfJQ3W/de8be26b-6546-4f3d-8e26-3f2e0eb3dcb8.jpg",
   "anime_ar": "https://d2ol7oe51mr4n9.cloudfront.net/user_3HGxDNEsLbirGFvK6UXrvXfJQ3W/0efe19c6-061d-452e-b8f2-265efea40020.jpg",
+  "movie_tmdb_id": 969681,
   "movie_en": "https://d2ol7oe51mr4n9.cloudfront.net/user_3HGxDNEsLbirGFvK6UXrvXfJQ3W/0549deab-0303-4d35-bb8a-35da3c16d436.jpg",
   "movie_ar": "https://d2ol7oe51mr4n9.cloudfront.net/user_3HGxDNEsLbirGFvK6UXrvXfJQ3W/4f74e359-cfdf-4677-b00b-39117c143e58.jpg",
-  "automation_version": 2
+  "automation_version": 3
 }

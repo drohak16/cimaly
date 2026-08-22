@@ -1,4 +1,4 @@
-name: Import Cimaly Images And Publish (legacy manual fallback)
+name: Import Cimaly ChatGPT Images And Publish
 
 on:
   workflow_dispatch:
@@ -51,19 +51,19 @@ jobs:
           test "$PACK_ANIME_TMDB_ID" = "$ANIME_TMDB_ID" || { echo "❌ Anime image pack TMDB ID mismatch"; exit 1; }
           test "$PACK_MOVIE_TMDB_ID" = "$MOVIE_TMDB_ID" || { echo "❌ Movie image pack TMDB ID mismatch"; exit 1; }
 
-      - name: Validate source URLs
+      - name: Validate ChatGPT image URLs
         shell: bash
         run: |
           set -euo pipefail
           for url in "$SERIES_EN" "$SERIES_AR" "$ANIME_EN" "$ANIME_AR" "$MOVIE_EN" "$MOVIE_AR"; do
-            [ -n "$url" ] && [ "$url" != "null" ] || { echo "❌ Missing legacy image URL"; exit 1; }
+            [ -n "$url" ] && [ "$url" != "null" ] || { echo "❌ Missing ChatGPT image URL"; exit 1; }
             case "$url" in
               http://*|https://*) ;;
               *) echo "❌ Invalid image URL: $url"; exit 1 ;;
             esac
           done
 
-      - name: Download six manual fallback visuals into GitHub
+      - name: Download six ChatGPT visuals into GitHub
         shell: bash
         run: |
           set -euo pipefail
@@ -75,7 +75,7 @@ jobs:
           curl --retry 3 --retry-delay 2 -fL "$MOVIE_EN" -o "public/social/daily/en/movie-${MOVIE_TMDB_ID}.jpg"
           curl --retry 3 --retry-delay 2 -fL "$MOVIE_AR" -o "public/social/daily/ar/movie-${MOVIE_TMDB_ID}.jpg"
 
-      - name: Commit fallback images
+      - name: Commit ChatGPT images
         shell: bash
         run: |
           set -euo pipefail
@@ -83,9 +83,16 @@ jobs:
           git config user.email "actions@github.com"
           git add -- public/social/daily
           if ! git diff --cached --quiet; then
-            git commit -m "Import manual Cimaly fallback visuals"
+            git commit -m "Import ChatGPT Cimaly visuals"
             git push origin HEAD:main
           fi
+
+      - name: Set series anime carousel to 01:30 Istanbul
+        shell: bash
+        run: |
+          set -euo pipefail
+          sed -i 's/getNextIstanbulSchedule(0, 30)/getNextIstanbulSchedule(1, 30)/' scripts/publish-buffer-daily.js
+          grep -q 'getNextIstanbulSchedule(1, 30)' scripts/publish-buffer-daily.js
 
       - name: Schedule Buffer posts
         env:

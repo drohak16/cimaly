@@ -24,11 +24,9 @@ const cfg = {
 
 const selection = JSON.parse(fs.readFileSync(SELECTION_FILE, "utf8"));
 
-const DAILY_ITEMS = [
-  { key: "series", dataKey: "morning_series", expectedType: "tv", hour: 17, minute: 30, emoji: "📺", labelEn: "SERIES PICK", labelAr: "اختيار مسلسل", hashtags: "#Cimaly #Series #TVSeries #Streaming #WatchNow" },
-  { key: "anime", dataKey: "afternoon_anime", expectedType: "tv", hour: 18, minute: 0, emoji: "✨", labelEn: "ANIME PICK", labelAr: "اختيار أنمي", hashtags: "#Cimaly #Anime #AnimeSeries #Streaming #WatchNow" },
-  { key: "movie", dataKey: "evening_movie", expectedType: "movie", hour: 19, minute: 30, emoji: "🎬", labelEn: "MOVIE PICK", labelAr: "اختيار فيلم", hashtags: "#Cimaly #Movie #Movies #Cinema #Streaming #WatchNow" },
-];
+const SERIES_ITEM = { key: "series", dataKey: "morning_series", expectedType: "tv" };
+const ANIME_ITEM = { key: "anime", dataKey: "afternoon_anime", expectedType: "tv" };
+const MOVIE_ITEM = { key: "movie", dataKey: "evening_movie", expectedType: "movie" };
 
 function loadHistory() {
   try {
@@ -75,13 +73,13 @@ function assertNotRecentlyPublished(data, history) {
   if (duplicate) throw new Error(`Duplicate blocked: ${data.title_en} was already published within ${ANTI_DUPLICATE_DAYS} days.`);
 }
 
-function recordPublished(data, item, history) {
+function recordPublished(data, slot, history) {
   history.items.push({
     content_key: contentKey(data),
     tmdb_id: Number(data.tmdb_id),
     type: data.type,
     title_en: data.title_en,
-    slot: item.key,
+    slot,
     published_at: new Date().toISOString(),
   });
   const keepFrom = cutoffDate(365);
@@ -89,22 +87,30 @@ function recordPublished(data, item, history) {
   saveHistory(history);
 }
 
-function getIstanbulSchedule(hour, minute) {
+function getNextIstanbulSchedule(hour, minute) {
   const now = new Date();
-  const parts = new Intl.DateTimeFormat("en-CA", {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Istanbul",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).formatToParts(now);
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  });
+  const parts = formatter.formatToParts(now);
   const get = (type) => parts.find((p) => p.type === type)?.value;
   const year = Number(get("year"));
   const month = Number(get("month"));
   const day = Number(get("day"));
-  const due = new Date(Date.UTC(year, month - 1, day, hour - 3, minute, 0));
+  const currentHour = Number(get("hour"));
+  const currentMinute = Number(get("minute"));
 
-  if (due <= now) return new Date(now.getTime() + 2 * 60 * 1000).toISOString();
-  return due.toISOString();
+  let targetDay = day;
+  const alreadyPassed = currentHour > hour || (currentHour === hour && currentMinute >= minute);
+  if (alreadyPassed) targetDay += 1;
+
+  return new Date(Date.UTC(year, month - 1, targetDay, hour - 3, minute, 0)).toISOString();
 }
 
 function shortOverview(text, max = 240) {
@@ -115,12 +121,20 @@ function shortOverview(text, max = 240) {
   return `${cut.slice(0, lastSpace > 120 ? lastSpace : max).trim()}…`;
 }
 
-function buildCaption(item, data) {
+function bilingualDescription(data, maxEn = 220, maxAr = 190) {
   const titleEn = data.title_en;
   const titleAr = data.title_ar || titleEn;
-  const introEn = shortOverview(data.overview_en, 240);
-  const introAr = data.overview_ar ? shortOverview(data.overview_ar, 210) : introEn;
-  return `${item.emoji} ${item.labelEn} | ${item.labelAr}\n\n${titleEn}\n${titleAr}\n\n${introEn}\n\n${introAr}\n\n▶️ Watch now | شاهد الآن\n${data.cimaly_url}\n\n${item.hashtags}`;
+  const en = shortOverview(data.overview_en, maxEn);
+  const ar = data.overview_ar ? shortOverview(data.overview_ar, maxAr) : "";
+  return `${titleEn}\n${titleAr}\n${en}${ar ? `\n\n${ar}` : ""}\n\n▶️ Watch now | شاهد الآن\n${data.cimaly_url}`;
+}
+
+function buildSeriesAnimeCaption(series, anime) {
+  return `📺 SERIES + ANIME NIGHT | مسلسل + أنمي\n\n${bilingualDescription(series)}\n\n──────────\n\n✨ ${bilingualDescription(anime)}\n\n#Cimaly #Series #TVSeries #Anime #AnimeSeries #Streaming #WatchNow #MovieNight`;
+}
+
+function buildMovieCaption(movie) {
+  return `🎬 MOVIE PICK | اختيار فيلم\n\n${bilingualDescription(movie, 240, 210)}\n\n#Cimaly #Movie #Movies #Cinema #Streaming #WatchNow`;
 }
 
 function buildPublicImageUrls(item, data) {
@@ -179,37 +193,64 @@ function isDuplicateError(error) {
   return msg.includes("already got this one scheduled") || msg.includes("same thing twice") || (msg.includes("already") && msg.includes("scheduled"));
 }
 
-async function publishToChannel({ network, name, channelId, item, imageUrls, text, dueAt }) {
+async function publishToChannel({ network, name, channelId, slot, imageUrls, text, dueAt }) {
   try {
     const post = await createBufferPost({ network, channelId, text, dueAt, imageUrls });
-    console.log(`✅ SUCCESS ${name} ${item.key} | Buffer Post ID: ${post.id}`);
+    console.log(`✅ SUCCESS ${name} ${slot} | Buffer Post ID: ${post.id}`);
     return true;
   } catch (error) {
     if (isDuplicateError(error)) {
-      console.log(`⚠️ ${name} ${item.key}: already scheduled — skipped safely.`);
+      console.log(`⚠️ ${name} ${slot}: already scheduled — skipped safely.`);
       return true;
     }
-    console.error(`❌ ${name} failed for ${item.key}: ${error.message}`);
+    console.error(`❌ ${name} failed for ${slot}: ${error.message}`);
     return false;
   }
 }
 
-async function processItem(item, history) {
-  const data = validateBoundContent(item, selection[item.dataKey]);
-  assertNotRecentlyPublished(data, history);
-  const imageUrls = buildPublicImageUrls(item, data);
-  await Promise.all(imageUrls.map(checkPublicImage));
-  const dueAt = getIstanbulSchedule(item.hour, item.minute);
-  const text = buildCaption(item, data);
+async function publishSeriesAnime(history) {
+  const series = validateBoundContent(SERIES_ITEM, selection[SERIES_ITEM.dataKey]);
+  const anime = validateBoundContent(ANIME_ITEM, selection[ANIME_ITEM.dataKey]);
+  assertNotRecentlyPublished(series, history);
+  assertNotRecentlyPublished(anime, history);
 
-  console.log(`Scheduling ${item.key} ${data.title_en} for ${dueAt}`);
+  const imageUrls = [
+    ...buildPublicImageUrls(SERIES_ITEM, series),
+    ...buildPublicImageUrls(ANIME_ITEM, anime),
+  ];
+  await Promise.all(imageUrls.map(checkPublicImage));
+
+  const dueAt = getNextIstanbulSchedule(0, 30);
+  const text = buildSeriesAnimeCaption(series, anime);
+  console.log(`Scheduling combined series+anime carousel for ${dueAt}`);
   console.log(imageUrls.join("\n"));
 
-  const facebookOk = await publishToChannel({ network: "facebook", name: "Facebook", channelId: cfg.facebookChannelId, item, imageUrls, text, dueAt });
-  const instagramOk = await publishToChannel({ network: "instagram", name: "Instagram", channelId: cfg.instagramChannelId, item, imageUrls, text, dueAt });
+  const facebookOk = await publishToChannel({ network: "facebook", name: "Facebook", channelId: cfg.facebookChannelId, slot: "series+anime", imageUrls, text, dueAt });
+  const instagramOk = await publishToChannel({ network: "instagram", name: "Instagram", channelId: cfg.instagramChannelId, slot: "series+anime", imageUrls, text, dueAt });
 
   if (facebookOk && instagramOk) {
-    recordPublished(data, item, history);
+    recordPublished(series, "series+anime", history);
+    recordPublished(anime, "series+anime", history);
+    return true;
+  }
+  return false;
+}
+
+async function publishMovie(history) {
+  const movie = validateBoundContent(MOVIE_ITEM, selection[MOVIE_ITEM.dataKey]);
+  assertNotRecentlyPublished(movie, history);
+  const imageUrls = buildPublicImageUrls(MOVIE_ITEM, movie);
+  await Promise.all(imageUrls.map(checkPublicImage));
+
+  const dueAt = getNextIstanbulSchedule(19, 30);
+  const text = buildMovieCaption(movie);
+  console.log(`Scheduling movie ${movie.title_en} for ${dueAt}`);
+
+  const facebookOk = await publishToChannel({ network: "facebook", name: "Facebook", channelId: cfg.facebookChannelId, slot: "movie", imageUrls, text, dueAt });
+  const instagramOk = await publishToChannel({ network: "instagram", name: "Instagram", channelId: cfg.instagramChannelId, slot: "movie", imageUrls, text, dueAt });
+
+  if (facebookOk && instagramOk) {
+    recordPublished(movie, "movie", history);
     return true;
   }
   return false;
@@ -219,14 +260,21 @@ async function main() {
   console.log("Starting Cimaly Buffer publisher with GitHub-hosted images...");
   const history = loadHistory();
   let allOk = true;
-  for (const item of DAILY_ITEMS) {
-    try {
-      allOk = (await processItem(item, history)) && allOk;
-    } catch (error) {
-      console.error(`❌ BLOCKED ${item.key}: ${error.message}`);
-      allOk = false;
-    }
+
+  try {
+    allOk = (await publishSeriesAnime(history)) && allOk;
+  } catch (error) {
+    console.error(`❌ BLOCKED series+anime: ${error.message}`);
+    allOk = false;
   }
+
+  try {
+    allOk = (await publishMovie(history)) && allOk;
+  } catch (error) {
+    console.error(`❌ BLOCKED movie: ${error.message}`);
+    allOk = false;
+  }
+
   if (!allOk) process.exitCode = 1;
 }
 

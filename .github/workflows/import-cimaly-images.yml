@@ -1,4 +1,4 @@
-name: Import Cimaly Images
+name: Import Cimaly Images And Publish
 
 on:
   workflow_dispatch:
@@ -10,11 +10,11 @@ permissions:
   contents: write
 
 concurrency:
-  group: cimaly-image-import
+  group: cimaly-image-import-publish
   cancel-in-progress: false
 
 jobs:
-  import-images:
+  import-and-publish:
     runs-on: ubuntu-latest
 
     steps:
@@ -22,6 +22,11 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: main
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
 
       - name: Read selected content IDs
         run: |
@@ -42,57 +47,36 @@ jobs:
           echo "MOVIE_AR=$(jq -r '.movie_ar' data/social-image-urls.json)" >> "$GITHUB_ENV"
 
       - name: Validate strict TMDB binding
+        shell: bash
         run: |
           set -euo pipefail
+          test "$PACK_SERIES_TMDB_ID" = "$SERIES_TMDB_ID" || { echo "❌ Series image pack TMDB ID mismatch"; exit 1; }
+          test "$PACK_ANIME_TMDB_ID" = "$ANIME_TMDB_ID" || { echo "❌ Anime image pack TMDB ID mismatch"; exit 1; }
+          test "$PACK_MOVIE_TMDB_ID" = "$MOVIE_TMDB_ID" || { echo "❌ Movie image pack TMDB ID mismatch"; exit 1; }
+          echo "✅ Image pack TMDB IDs match today's selected content"
 
-          test "$PACK_SERIES_TMDB_ID" = "$SERIES_TMDB_ID" || {
-            echo "❌ Series image pack TMDB ID does not match selected series"
-            exit 1
-          }
-
-          test "$PACK_ANIME_TMDB_ID" = "$ANIME_TMDB_ID" || {
-            echo "❌ Anime image pack TMDB ID does not match selected anime"
-            exit 1
-          }
-
-          test "$PACK_MOVIE_TMDB_ID" = "$MOVIE_TMDB_ID" || {
-            echo "❌ Movie image pack TMDB ID does not match selected movie"
-            exit 1
-          }
-
-          echo "✅ Image pack TMDB IDs match the selected content exactly"
-
-      - name: Validate URLs
+      - name: Validate source URLs
+        shell: bash
         run: |
-          for url in \
-            "$SERIES_EN" \
-            "$SERIES_AR" \
-            "$ANIME_EN" \
-            "$ANIME_AR" \
-            "$MOVIE_EN" \
-            "$MOVIE_AR"
-          do
+          set -euo pipefail
+          for url in "$SERIES_EN" "$SERIES_AR" "$ANIME_EN" "$ANIME_AR" "$MOVIE_EN" "$MOVIE_AR"; do
             if [ -z "$url" ] || [ "$url" = "null" ]; then
-              echo "Missing image URL"
+              echo "❌ Missing image URL"
               exit 1
             fi
-
             case "$url" in
               http://*|https://*) ;;
-              *)
-                echo "Invalid image URL: $url"
-                exit 1
-                ;;
+              *) echo "❌ Invalid image URL: $url"; exit 1 ;;
             esac
           done
+          echo "✅ All 6 source URLs are present"
 
-      - name: Create folders
+      - name: Download six ChatGPT visuals into GitHub workspace
+        shell: bash
         run: |
-          mkdir -p public/social/daily/en
-          mkdir -p public/social/daily/ar
+          set -euo pipefail
+          mkdir -p public/social/daily/en public/social/daily/ar
 
-      - name: Download ID-bound Cimaly images
-        run: |
           curl --retry 3 --retry-delay 2 -fL "$SERIES_EN" -o "public/social/daily/en/series-${SERIES_TMDB_ID}.jpg"
           curl --retry 3 --retry-delay 2 -fL "$SERIES_AR" -o "public/social/daily/ar/series-${SERIES_TMDB_ID}.jpg"
           curl --retry 3 --retry-delay 2 -fL "$ANIME_EN" -o "public/social/daily/en/anime-${ANIME_TMDB_ID}.jpg"
@@ -101,31 +85,99 @@ jobs:
           curl --retry 3 --retry-delay 2 -fL "$MOVIE_AR" -o "public/social/daily/ar/movie-${MOVIE_TMDB_ID}.jpg"
 
       - name: Verify downloaded images
+        shell: bash
         run: |
+          set -euo pipefail
           for file in \
             "public/social/daily/en/series-${SERIES_TMDB_ID}.jpg" \
             "public/social/daily/ar/series-${SERIES_TMDB_ID}.jpg" \
             "public/social/daily/en/anime-${ANIME_TMDB_ID}.jpg" \
             "public/social/daily/ar/anime-${ANIME_TMDB_ID}.jpg" \
             "public/social/daily/en/movie-${MOVIE_TMDB_ID}.jpg" \
-            "public/social/daily/ar/movie-${MOVIE_TMDB_ID}.jpg"
-          do
+            "public/social/daily/ar/movie-${MOVIE_TMDB_ID}.jpg"; do
             test -s "$file"
             file "$file" | grep -Eqi 'JPEG|PNG|WebP image data'
           done
+          echo "✅ All 6 images downloaded and validated"
 
-          echo "✅ All 6 ID-bound images downloaded and validated"
-
-      - name: Commit images
+      - name: Commit exact ID-bound images
+        shell: bash
         run: |
+          set -euo pipefail
           git config user.name "cimaly-social-bot"
           git config user.email "actions@github.com"
-
           git add -- public/social/daily
-
           if git diff --cached --quiet; then
             echo "No image changes"
           else
-            git commit -m "Update ID-bound Cimaly social visuals"
+            git commit -m "Import today's ChatGPT Cimaly visuals"
+            git push origin HEAD:main
+          fi
+
+      - name: Verify images are live on cimaly.cc
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=(
+            "en/series-${SERIES_TMDB_ID}.jpg"
+            "ar/series-${SERIES_TMDB_ID}.jpg"
+            "en/anime-${ANIME_TMDB_ID}.jpg"
+            "ar/anime-${ANIME_TMDB_ID}.jpg"
+            "en/movie-${MOVIE_TMDB_ID}.jpg"
+            "ar/movie-${MOVIE_TMDB_ID}.jpg"
+          )
+
+          for attempt in $(seq 1 20); do
+            all_ok=true
+            for relative in "${files[@]}"; do
+              local_file="public/social/daily/$relative"
+              remote_file="/tmp/$(echo "$relative" | tr '/' '-')"
+              remote_url="https://cimaly.cc/social/daily/$relative?v=${GITHUB_RUN_ID}-${attempt}"
+              if ! curl --retry 2 --retry-delay 1 -fsSL "$remote_url" -o "$remote_file"; then
+                all_ok=false
+                break
+              fi
+              local_sha=$(sha256sum "$local_file" | awk '{print $1}')
+              remote_sha=$(sha256sum "$remote_file" | awk '{print $1}')
+              if [ "$local_sha" != "$remote_sha" ]; then
+                all_ok=false
+                break
+              fi
+            done
+            if [ "$all_ok" = true ]; then
+              echo "✅ Exact new images are live"
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "❌ New images did not become live in time; Buffer is blocked"
+          exit 1
+
+      - name: Schedule Facebook and Instagram in Buffer
+        id: buffer_publish
+        env:
+          BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
+          BUFFER_CHANNEL_ID_FACEBOOK: ${{ secrets.BUFFER_CHANNEL_ID_FACEBOOK }}
+          BUFFER_CHANNEL_ID_INSTAGRAM: ${{ secrets.BUFFER_CHANNEL_ID_INSTAGRAM }}
+        run: node scripts/publish-buffer-daily.js
+
+      - name: Persist anti-duplicate history
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -f data/published-social-history.json ]; then
+            echo '{"items":[]}' > data/published-social-history.json
+          fi
+
+          git config user.name "cimaly-social-bot"
+          git config user.email "actions@github.com"
+          git add -- data/published-social-history.json
+
+          if git diff --cached --quiet; then
+            echo "No publication history changes"
+          else
+            git commit -m "Persist Cimaly anti-duplicate history"
+            git pull --rebase origin main
             git push origin HEAD:main
           fi

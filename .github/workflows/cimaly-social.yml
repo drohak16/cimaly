@@ -1,19 +1,20 @@
-name: Cimaly Daily Social Selection
+name: Cimaly Daily Social
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 6 * * *"
+    # 21:00 Istanbul. Prepares the next 00:30 carousel and 19:30 movie.
+    - cron: "0 18 * * *"
 
 permissions:
   contents: write
 
 concurrency:
-  group: cimaly-daily-social-selection
+  group: cimaly-daily-social
   cancel-in-progress: false
 
 jobs:
-  select-content:
+  generate-and-schedule:
     runs-on: ubuntu-latest
 
     steps:
@@ -27,6 +28,9 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Install social image renderer
+        run: npm install --no-save sharp@0.34.3
+
       - name: Sync persistent published history
         shell: bash
         run: |
@@ -39,7 +43,7 @@ jobs:
             echo "ℹ️ No published history yet; starting clean"
           fi
 
-      - name: Select today's exact TMDB content
+      - name: Select exact TMDB content
         env:
           TMDB_READ_TOKEN: ${{ secrets.TMDB_READ_TOKEN }}
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
@@ -54,31 +58,94 @@ jobs:
             overview=$(jq -r ".${key}.overview_en // empty" data/last-social-selection.json)
             id=$(jq -r ".${key}.tmdb_id // empty" data/last-social-selection.json)
             url=$(jq -r ".${key}.cimaly_url // empty" data/last-social-selection.json)
-            if [ -z "$id" ] || [ -z "$title" ] || [ -z "$overview" ] || [ -z "$url" ]; then
-              echo "❌ Missing TMDB ID, title, story or Cimaly URL for $key"
+            poster=$(jq -r ".${key}.poster_original // .${key}.poster_w780 // empty" data/last-social-selection.json)
+            if [ -z "$id" ] || [ -z "$title" ] || [ -z "$overview" ] || [ -z "$url" ] || [ -z "$poster" ]; then
+              echo "❌ Missing TMDB ID, title, description, Cimaly URL or poster for $key"
               exit 1
             fi
           done
-          echo "✅ Today's 3 contents are ready for ChatGPT visuals"
+          echo "✅ Three exact contents are ready"
 
-      - name: Commit selection only
+      - name: Generate six Cimaly branded images
+        run: node scripts/generate-social-images.js
+
+      - name: Verify six generated images
+        shell: bash
+        run: |
+          set -euo pipefail
+          SERIES_ID=$(jq -r '.morning_series.tmdb_id' data/last-social-selection.json)
+          ANIME_ID=$(jq -r '.afternoon_anime.tmdb_id' data/last-social-selection.json)
+          MOVIE_ID=$(jq -r '.evening_movie.tmdb_id' data/last-social-selection.json)
+          for file in \
+            "public/social/daily/en/series-${SERIES_ID}.jpg" \
+            "public/social/daily/ar/series-${SERIES_ID}.jpg" \
+            "public/social/daily/en/anime-${ANIME_ID}.jpg" \
+            "public/social/daily/ar/anime-${ANIME_ID}.jpg" \
+            "public/social/daily/en/movie-${MOVIE_ID}.jpg" \
+            "public/social/daily/ar/movie-${MOVIE_ID}.jpg"; do
+            test -s "$file"
+            file "$file" | grep -Eqi 'JPEG image data'
+          done
+          echo "✅ Six branded images verified"
+
+      - name: Commit selection and generated images
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "cimaly-social-bot"
           git config user.email "actions@github.com"
-
-          git add -- data/last-social-selection.json data/social-history.json
-
+          git add -- data/last-social-selection.json data/social-history.json public/social/daily
           if git diff --cached --quiet; then
-            echo "No selection changes"
+            echo "No content/image changes"
           else
-            git commit -m "Select today's Cimaly social content"
+            git commit -m "Generate daily Cimaly social pack"
             git push origin HEAD:main
           fi
 
-      - name: Explain next stage
+      - name: Refresh checkout after image commit
+        shell: bash
+        run: git pull --rebase origin main
+
+      - name: Verify public GitHub image URLs
+        shell: bash
         run: |
-          echo "✅ Selection complete."
-          echo "Next stage is triggered only when data/social-image-urls.json is updated with the 6 new ChatGPT image URLs."
-          echo "No automatic poster generation and no Buffer publishing happens in this workflow."
+          set -euo pipefail
+          SERIES_ID=$(jq -r '.morning_series.tmdb_id' data/last-social-selection.json)
+          ANIME_ID=$(jq -r '.afternoon_anime.tmdb_id' data/last-social-selection.json)
+          MOVIE_ID=$(jq -r '.evening_movie.tmdb_id' data/last-social-selection.json)
+          BASE="https://raw.githubusercontent.com/drohak16/cimaly/main/public/social/daily"
+          for relative in \
+            "en/series-${SERIES_ID}.jpg" \
+            "ar/series-${SERIES_ID}.jpg" \
+            "en/anime-${ANIME_ID}.jpg" \
+            "ar/anime-${ANIME_ID}.jpg" \
+            "en/movie-${MOVIE_ID}.jpg" \
+            "ar/movie-${MOVIE_ID}.jpg"; do
+            curl --retry 5 --retry-delay 2 -fsSL "$BASE/$relative" -o /tmp/cimaly-check
+            test -s /tmp/cimaly-check
+          done
+          echo "✅ GitHub image URLs are public"
+
+      - name: Schedule Buffer posts
+        env:
+          BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
+          BUFFER_CHANNEL_ID_FACEBOOK: ${{ secrets.BUFFER_CHANNEL_ID_FACEBOOK }}
+          BUFFER_CHANNEL_ID_INSTAGRAM: ${{ secrets.BUFFER_CHANNEL_ID_INSTAGRAM }}
+        run: node scripts/publish-buffer-daily.js
+
+      - name: Persist anti-duplicate history
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          [ -f data/published-social-history.json ] || echo '{"items":[]}' > data/published-social-history.json
+          git config user.name "cimaly-social-bot"
+          git config user.email "actions@github.com"
+          git add -- data/published-social-history.json
+          if git diff --cached --quiet; then
+            echo "No publication history changes"
+          else
+            git commit -m "Persist Cimaly publication history"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi

@@ -3,9 +3,9 @@
     "tmdb_id": 95350,
     "type": "tv",
     "year_date": "2026-08-16",
-    "popularity": 271.8148,
+    "popularity": 281.2723,
     "vote_average": 8.1,
-    "vote_count": 122,
+    "vote_count": 130,
     "origin_country": [
       "US"
     ],
@@ -19,31 +19,31 @@
     "cimaly_url": "https://cimaly.cc/tv/95350"
   },
   "afternoon_anime": {
-    "tmdb_id": 312949,
+    "tmdb_id": 285993,
     "type": "tv",
-    "year_date": "2026-07-03",
-    "popularity": 52.0438,
-    "vote_average": 8.49,
-    "vote_count": 52,
+    "year_date": "2026-07-04",
+    "popularity": 44.991,
+    "vote_average": 8.6,
+    "vote_count": 29,
     "origin_country": [
       "JP"
     ],
     "original_language": "ja",
-    "title_en": "Chainsmoker Cat",
+    "title_en": "BLACK TORCH",
     "title_ar": "",
-    "overview_en": "Catgirl Yani struggles to pay her rent and keep a job while feeding her smoking habit. As her loved ones' concerns grow, she must rethink her future.",
-    "overview_ar": "تكافح ياني، الفتاة القطة، لتسديد إيجارها والحفاظ على وظيفتها، بينما تنفق أموالها على تدخين السجائر. ومع تزايد قلق أحبائها، عليها أن تعيد التفكير في مستقبلها.",
-    "poster_original": "https://image.tmdb.org/t/p/original/kqeKlSd7o9BCbTraZsDnksRSfxm.jpg",
-    "poster_w780": "https://image.tmdb.org/t/p/w780/kqeKlSd7o9BCbTraZsDnksRSfxm.jpg",
-    "cimaly_url": "https://cimaly.cc/tv/312949"
+    "overview_en": "Jiro Azuma is no average high schooler. A descendant of ninjas and trained in the ancient warrior art of the shinobi, Jiro is also able to talk with animals. After a mysterious encounter with an injured cat named Rago, Jiro discovers the feline is actually the legendary Black Star of Doom! Joined by the Bureau of Espionage, they fight off swarms of mononoke lying in wait to exploit Rago’s powers.",
+    "overview_ar": "",
+    "poster_original": "https://image.tmdb.org/t/p/original/iWTBUy7tyJVnzSLFuV6os5G0J04.jpg",
+    "poster_w780": "https://image.tmdb.org/t/p/w780/iWTBUy7tyJVnzSLFuV6os5G0J04.jpg",
+    "cimaly_url": "https://cimaly.cc/tv/285993"
   },
   "evening_movie": {
     "tmdb_id": 969681,
     "type": "movie",
     "year_date": "2026-07-29",
-    "popularity": 1819.537,
-    "vote_average": 7.887,
-    "vote_count": 1989,
+    "popularity": 1763.3254,
+    "vote_average": 7.9,
+    "vote_count": 2022,
     "origin_country": [
       "US"
     ],

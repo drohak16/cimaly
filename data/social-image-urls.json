@@ -1,12 +1,14 @@
 {
+  "deprecated": true,
+  "note": "Legacy manual fallback only. Daily Cimaly social images are generated automatically in GitHub.",
   "series_tmdb_id": 95350,
-  "series_en": "https://d8j0ntlcm91z4.cloudfront.net/user_3HGxDNEsLbirGFvK6UXrvXfJQ3W/hf_20260822_101115_1b020659-9cc8-42c4-b805-a72aa7135760.png",
-  "series_ar": "https://d8j0ntlcm91z4.cloudfront.net/user_3HGxDNEsLbirGFvK6UXrvXfJQ3W/hf_20260822_101114_1133807d-7fd6-4cb9-acbf-b045dc6de567.png",
+  "series_en": "",
+  "series_ar": "",
   "anime_tmdb_id": 285993,
-  "anime_en": "https://d8j0ntlcm91z4.cloudfront.net/user_3HGxDNEsLbirGFvK6UXrvXfJQ3W/hf_20260822_101115_d0875537-9193-420d-a34e-7deea5dbdf9e.png",
-  "anime_ar": "https://d8j0ntlcm91z4.cloudfront.net/user_3HGxDNEsLbirGFvK6UXrvXfJQ3W/hf_20260822_101114_fac1bd08-b77a-4fd8-b25a-5b854587bd2d.png",
-  "movie_tmdb_id": 969681,
-  "movie_en": "https://d8j0ntlcm91z4.cloudfront.net/user_3HGxDNEsLbirGFvK6UXrvXfJQ3W/hf_20260822_101226_60d85355-6050-487e-9331-12d3d98f4900.png",
-  "movie_ar": "https://d8j0ntlcm91z4.cloudfront.net/user_3HGxDNEsLbirGFvK6UXrvXfJQ3W/hf_20260822_101248_ed0fa922-0c08-427a-9d18-5ca896479255.png",
-  "automation_version": 5
+  "anime_en": "",
+  "anime_ar": "",
+  "movie_tmdb_id": 1084244,
+  "movie_en": "",
+  "movie_ar": "",
+  "automation_version": 6
 }

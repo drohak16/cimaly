@@ -2,11 +2,16 @@ name: Publish Buffer Daily
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "32 22 * * *" # 01:32 Europe/Istanbul
   push:
     branches:
       - main
     paths:
       - data/publish-trigger.txt
+
+permissions:
+  contents: write
 
 jobs:
   publish:
@@ -15,11 +20,53 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: main
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
+
+      - name: Install SVG renderer and Arabic fonts
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y librsvg2-bin fonts-noto-core imagemagick
+
+      - name: Render four Cimaly images
+        run: |
+          set -euo pipefail
+          mkdir -p public/social/daily/en public/social/daily/ar /tmp/cimaly-render
+
+          rsvg-convert -w 1080 -h 1350 public/social/source/en/series-95350.svg -o /tmp/cimaly-render/series-en.png
+          rsvg-convert -w 1080 -h 1350 public/social/source/ar/series-95350.svg -o /tmp/cimaly-render/series-ar.png
+          rsvg-convert -w 1080 -h 1350 public/social/source/en/anime-285993.svg -o /tmp/cimaly-render/anime-en.png
+          rsvg-convert -w 1080 -h 1350 public/social/source/ar/anime-285993.svg -o /tmp/cimaly-render/anime-ar.png
+
+          convert /tmp/cimaly-render/series-en.png -quality 92 public/social/daily/en/series-95350.jpg
+          convert /tmp/cimaly-render/series-ar.png -quality 92 public/social/daily/ar/series-95350.jpg
+          convert /tmp/cimaly-render/anime-en.png -quality 92 public/social/daily/en/anime-285993.jpg
+          convert /tmp/cimaly-render/anime-ar.png -quality 92 public/social/daily/ar/anime-285993.jpg
+
+      - name: Commit rendered social images
+        run: |
+          set -euo pipefail
+          git config user.name "cimaly-social-bot"
+          git config user.email "actions@github.com"
+          git add public/social/daily
+          if ! git diff --cached --quiet; then
+            git commit -m "Render Cimaly EN AR social visuals"
+            git push origin HEAD:main
+          fi
+
+      - name: Verify public image URLs
+        run: |
+          set -euo pipefail
+          sleep 10
+          curl -fL --retry 4 --retry-delay 3 https://raw.githubusercontent.com/drohak16/cimaly/main/public/social/daily/en/series-95350.jpg -o /dev/null
+          curl -fL --retry 4 --retry-delay 3 https://raw.githubusercontent.com/drohak16/cimaly/main/public/social/daily/ar/series-95350.jpg -o /dev/null
+          curl -fL --retry 4 --retry-delay 3 https://raw.githubusercontent.com/drohak16/cimaly/main/public/social/daily/en/anime-285993.jpg -o /dev/null
+          curl -fL --retry 4 --retry-delay 3 https://raw.githubusercontent.com/drohak16/cimaly/main/public/social/daily/ar/anime-285993.jpg -o /dev/null
 
       - name: Publish Cimaly posts to Buffer
         env:

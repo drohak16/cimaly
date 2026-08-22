@@ -25,9 +25,9 @@ const cfg = {
 const selection = JSON.parse(fs.readFileSync(SELECTION_FILE, "utf8"));
 
 const DAILY_ITEMS = [
-  { key: "series", dataKey: "morning_series", expectedType: "tv", hour: 10, minute: 0, emoji: "📺", labelEn: "SERIES PICK", labelAr: "اختيار مسلسل", hashtags: "#Cimaly #Series #TVSeries #Streaming #WatchNow" },
-  { key: "anime", dataKey: "afternoon_anime", expectedType: "tv", hour: 16, minute: 0, emoji: "✨", labelEn: "ANIME PICK", labelAr: "اختيار أنمي", hashtags: "#Cimaly #Anime #AnimeSeries #Streaming #WatchNow" },
-  { key: "movie", dataKey: "evening_movie", expectedType: "movie", hour: 20, minute: 30, emoji: "🎬", labelEn: "MOVIE PICK", labelAr: "اختيار فيلم", hashtags: "#Cimaly #Movie #Movies #Cinema #Streaming #WatchNow" },
+  { key: "series", dataKey: "morning_series", expectedType: "tv", hour: 17, minute: 30, emoji: "📺", labelEn: "SERIES PICK", labelAr: "اختيار مسلسل", hashtags: "#Cimaly #Series #TVSeries #Streaming #WatchNow" },
+  { key: "anime", dataKey: "afternoon_anime", expectedType: "tv", hour: 18, minute: 0, emoji: "✨", labelEn: "ANIME PICK", labelAr: "اختيار أنمي", hashtags: "#Cimaly #Anime #AnimeSeries #Streaming #WatchNow" },
+  { key: "movie", dataKey: "evening_movie", expectedType: "movie", hour: 19, minute: 30, emoji: "🎬", labelEn: "MOVIE PICK", labelAr: "اختيار فيلم", hashtags: "#Cimaly #Movie #Movies #Cinema #Streaming #WatchNow" },
 ];
 
 function loadHistory() {
@@ -103,7 +103,6 @@ function getIstanbulSchedule(hour, minute) {
   const day = Number(get("day"));
   const due = new Date(Date.UTC(year, month - 1, day, hour - 3, minute, 0));
 
-  // If today's slot was missed, publish shortly instead of postponing it to tomorrow.
   if (due <= now) return new Date(now.getTime() + 2 * 60 * 1000).toISOString();
   return due.toISOString();
 }

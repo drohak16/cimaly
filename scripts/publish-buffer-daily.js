@@ -6,12 +6,7 @@ const PUBLISHED_HISTORY_FILE = "data/published-social-history.json";
 const ANTI_DUPLICATE_DAYS = 60;
 const IMAGE_BASE = "https://raw.githubusercontent.com/drohak16/cimaly/main/public/social/daily";
 
-const REQUIRED = [
-  "BUFFER_API_KEY",
-  "BUFFER_CHANNEL_ID_FACEBOOK",
-  "BUFFER_CHANNEL_ID_INSTAGRAM",
-];
-
+const REQUIRED = ["BUFFER_API_KEY", "BUFFER_CHANNEL_ID_FACEBOOK", "BUFFER_CHANNEL_ID_INSTAGRAM"];
 for (const key of REQUIRED) {
   if (!process.env[key]) throw new Error(`Missing required secret: ${key}`);
 }
@@ -23,10 +18,8 @@ const cfg = {
 };
 
 const selection = JSON.parse(fs.readFileSync(SELECTION_FILE, "utf8"));
-
 const SERIES_ITEM = { key: "series", dataKey: "morning_series", expectedType: "tv" };
 const ANIME_ITEM = { key: "anime", dataKey: "afternoon_anime", expectedType: "tv" };
-const MOVIE_ITEM = { key: "movie", dataKey: "evening_movie", expectedType: "movie" };
 
 function loadHistory() {
   try {
@@ -55,13 +48,10 @@ function contentKey(data) {
 function validateBoundContent(item, data) {
   if (!data || typeof data !== "object") throw new Error(`Missing selected content for ${item.dataKey}`);
   if (!Number.isInteger(Number(data.tmdb_id)) || Number(data.tmdb_id) <= 0) throw new Error(`Invalid TMDB ID for ${item.key}`);
-  if (data.type !== item.expectedType) throw new Error(`Content type mismatch for ${item.key}: expected ${item.expectedType}, got ${data.type}`);
+  if (data.type !== item.expectedType) throw new Error(`Content type mismatch for ${item.key}`);
   if (!String(data.title_en || "").trim()) throw new Error(`Missing title for ${item.key}`);
-  if (!String(data.overview_en || "").trim()) throw new Error(`Missing TMDB story overview for ${data.title_en}`);
-
-  const expectedUrl = data.type === "movie"
-    ? `https://cimaly.cc/movie/${data.tmdb_id}`
-    : `https://cimaly.cc/tv/${data.tmdb_id}`;
+  if (!String(data.overview_en || "").trim()) throw new Error(`Missing overview for ${data.title_en}`);
+  const expectedUrl = `https://cimaly.cc/tv/${data.tmdb_id}`;
   if (data.cimaly_url !== expectedUrl) throw new Error(`Cimaly URL mismatch for ${data.title_en}`);
   return data;
 }
@@ -105,15 +95,12 @@ function getNextIstanbulSchedule(hour, minute) {
   const day = Number(get("day"));
   const currentHour = Number(get("hour"));
   const currentMinute = Number(get("minute"));
-
   let targetDay = day;
-  const alreadyPassed = currentHour > hour || (currentHour === hour && currentMinute >= minute);
-  if (alreadyPassed) targetDay += 1;
-
+  if (currentHour > hour || (currentHour === hour && currentMinute >= minute)) targetDay += 1;
   return new Date(Date.UTC(year, month - 1, targetDay, hour - 3, minute, 0)).toISOString();
 }
 
-function shortOverview(text, max = 240) {
+function shortOverview(text, max = 230) {
   const clean = String(text || "").replace(/\s+/g, " ").trim();
   if (clean.length <= max) return clean;
   const cut = clean.slice(0, max);
@@ -121,20 +108,26 @@ function shortOverview(text, max = 240) {
   return `${cut.slice(0, lastSpace > 120 ? lastSpace : max).trim()}…`;
 }
 
-function bilingualDescription(data, maxEn = 220, maxAr = 190) {
+function arabicFallback(data) {
+  if (Number(data.tmdb_id) === 285993) {
+    return "جيرو أزوما طالب ثانوي من سلالة النينجا ويستطيع التحدث مع الحيوانات. بعد لقائه بقط غامض يُدعى راغو، يكتشف قوة أسطورية خطيرة وينضم إلى مكتب التجسس لمواجهة كائنات خارقة تسعى لاستغلالها.";
+  }
+  return "";
+}
+
+function bilingualDescription(data) {
   const titleEn = data.title_en;
-  const titleAr = data.title_ar || titleEn;
-  const en = shortOverview(data.overview_en, maxEn);
-  const ar = data.overview_ar ? shortOverview(data.overview_ar, maxAr) : "";
-  return `${titleEn}\n${titleAr}\n${en}${ar ? `\n\n${ar}` : ""}\n\n▶️ Watch now | شاهد الآن\n${data.cimaly_url}`;
+  const titleAr = data.title_ar || (Number(data.tmdb_id) === 285993 ? "بلاك تورش" : titleEn);
+  const en = shortOverview(data.overview_en, 230);
+  const ar = shortOverview(data.overview_ar || arabicFallback(data), 210);
+  return `${titleEn}\n${titleAr}\n\n${en}\n\n${ar}\n\n▶️ Watch now | شاهد الآن\n${data.cimaly_url}`;
 }
 
-function buildSeriesAnimeCaption(series, anime) {
-  return `📺 SERIES + ANIME NIGHT | مسلسل + أنمي\n\n${bilingualDescription(series)}\n\n──────────\n\n✨ ${bilingualDescription(anime)}\n\n#Cimaly #Series #TVSeries #Anime #AnimeSeries #Streaming #WatchNow #MovieNight`;
-}
-
-function buildMovieCaption(movie) {
-  return `🎬 MOVIE PICK | اختيار فيلم\n\n${bilingualDescription(movie, 240, 210)}\n\n#Cimaly #Movie #Movies #Cinema #Streaming #WatchNow`;
+function buildCaption(item, data) {
+  if (item.key === "series") {
+    return `📺 NEW SERIES | مسلسل جديد\n\n${bilingualDescription(data)}\n\n#Cimaly #Lanterns #Series #TVSeries #SciFi #Drama #Streaming #WatchNow`;
+  }
+  return `🔥 NEW ANIME | أنمي جديد\n\n${bilingualDescription(data)}\n\n#Cimaly #BlackTorch #Anime #AnimeSeries #Action #Fantasy #Streaming #WatchNow`;
 }
 
 function buildPublicImageUrls(item, data) {
@@ -179,11 +172,11 @@ async function createBufferPost({ network, channelId, text, dueAt, imageUrls }) 
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${cfg.bufferApiKey}` },
     body: JSON.stringify({ query }),
   });
-  const data = await response.json();
-  if (!response.ok) throw new Error(`Buffer HTTP error ${response.status}: ${JSON.stringify(data)}`);
-  if (data.errors?.length) throw new Error(`Buffer GraphQL error: ${JSON.stringify(data.errors)}`);
-  const result = data.data?.createPost;
-  if (!result) throw new Error(`Unexpected Buffer response: ${JSON.stringify(data)}`);
+  const body = await response.json();
+  if (!response.ok) throw new Error(`Buffer HTTP error ${response.status}: ${JSON.stringify(body)}`);
+  if (body.errors?.length) throw new Error(`Buffer GraphQL error: ${JSON.stringify(body.errors)}`);
+  const result = body.data?.createPost;
+  if (!result) throw new Error(`Unexpected Buffer response: ${JSON.stringify(body)}`);
   if (result.message) throw new Error(`Buffer error: ${result.message}`);
   return result.post;
 }
@@ -208,70 +201,42 @@ async function publishToChannel({ network, name, channelId, slot, imageUrls, tex
   }
 }
 
-async function publishSeriesAnime(history) {
-  const series = validateBoundContent(SERIES_ITEM, selection[SERIES_ITEM.dataKey]);
-  const anime = validateBoundContent(ANIME_ITEM, selection[ANIME_ITEM.dataKey]);
-  assertNotRecentlyPublished(series, history);
-  assertNotRecentlyPublished(anime, history);
-
-  const imageUrls = [
-    ...buildPublicImageUrls(SERIES_ITEM, series),
-    ...buildPublicImageUrls(ANIME_ITEM, anime),
-  ];
+async function publishItem(item, slot, history) {
+  const data = validateBoundContent(item, selection[item.dataKey]);
+  assertNotRecentlyPublished(data, history);
+  const imageUrls = buildPublicImageUrls(item, data);
   await Promise.all(imageUrls.map(checkPublicImage));
-
-  const dueAt = getNextIstanbulSchedule(0, 30);
-  const text = buildSeriesAnimeCaption(series, anime);
-  console.log(`Scheduling combined series+anime carousel for ${dueAt}`);
+  const dueAt = getNextIstanbulSchedule(1, 40);
+  const text = buildCaption(item, data);
+  console.log(`Scheduling ${slot} ${data.title_en} for ${dueAt}`);
   console.log(imageUrls.join("\n"));
 
-  const facebookOk = await publishToChannel({ network: "facebook", name: "Facebook", channelId: cfg.facebookChannelId, slot: "series+anime", imageUrls, text, dueAt });
-  const instagramOk = await publishToChannel({ network: "instagram", name: "Instagram", channelId: cfg.instagramChannelId, slot: "series+anime", imageUrls, text, dueAt });
+  const facebookOk = await publishToChannel({ network: "facebook", name: "Facebook", channelId: cfg.facebookChannelId, slot, imageUrls, text, dueAt });
+  const instagramOk = await publishToChannel({ network: "instagram", name: "Instagram", channelId: cfg.instagramChannelId, slot, imageUrls, text, dueAt });
 
   if (facebookOk && instagramOk) {
-    recordPublished(series, "series+anime", history);
-    recordPublished(anime, "series+anime", history);
-    return true;
-  }
-  return false;
-}
-
-async function publishMovie(history) {
-  const movie = validateBoundContent(MOVIE_ITEM, selection[MOVIE_ITEM.dataKey]);
-  assertNotRecentlyPublished(movie, history);
-  const imageUrls = buildPublicImageUrls(MOVIE_ITEM, movie);
-  await Promise.all(imageUrls.map(checkPublicImage));
-
-  const dueAt = getNextIstanbulSchedule(19, 30);
-  const text = buildMovieCaption(movie);
-  console.log(`Scheduling movie ${movie.title_en} for ${dueAt}`);
-
-  const facebookOk = await publishToChannel({ network: "facebook", name: "Facebook", channelId: cfg.facebookChannelId, slot: "movie", imageUrls, text, dueAt });
-  const instagramOk = await publishToChannel({ network: "instagram", name: "Instagram", channelId: cfg.instagramChannelId, slot: "movie", imageUrls, text, dueAt });
-
-  if (facebookOk && instagramOk) {
-    recordPublished(movie, "movie", history);
+    recordPublished(data, slot, history);
     return true;
   }
   return false;
 }
 
 async function main() {
-  console.log("Starting Cimaly Buffer publisher with GitHub-hosted images...");
+  console.log("Starting Cimaly Buffer publisher: separate EN/AR posts at 01:40 Istanbul...");
   const history = loadHistory();
   let allOk = true;
 
   try {
-    allOk = (await publishSeriesAnime(history)) && allOk;
+    allOk = (await publishItem(SERIES_ITEM, "series", history)) && allOk;
   } catch (error) {
-    console.error(`❌ BLOCKED series+anime: ${error.message}`);
+    console.error(`❌ BLOCKED series: ${error.message}`);
     allOk = false;
   }
 
   try {
-    allOk = (await publishMovie(history)) && allOk;
+    allOk = (await publishItem(ANIME_ITEM, "anime", history)) && allOk;
   } catch (error) {
-    console.error(`❌ BLOCKED movie: ${error.message}`);
+    console.error(`❌ BLOCKED anime: ${error.message}`);
     allOk = false;
   }
 

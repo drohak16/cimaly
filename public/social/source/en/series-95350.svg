@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350" viewBox="0 0 1080 1350">
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fffdf4"/><stop offset="0.55" stop-color="#dff6de"/><stop offset="1" stop-color="#b7e4c7"/></linearGradient>
+  <radialGradient id="orb"><stop stop-color="#f5ff9a"/><stop offset="0.35" stop-color="#8df25b"/><stop offset="1" stop-color="#0d6b3e"/></radialGradient>
+  <linearGradient id="cta" x1="0" x2="1"><stop stop-color="#f5b700"/><stop offset="1" stop-color="#ffd84d"/></linearGradient>
+  <filter id="shadow"><feDropShadow dx="0" dy="14" stdDeviation="22" flood-opacity=".18"/></filter>
+</defs>
+<rect width="1080" height="1350" fill="url(#bg)"/>
+<circle cx="865" cy="410" r="250" fill="#ffffff" opacity=".42"/>
+<circle cx="880" cy="425" r="150" fill="url(#orb)" opacity=".95" filter="url(#shadow)"/>
+<circle cx="880" cy="425" r="88" fill="none" stroke="#eaffcf" stroke-width="16" opacity=".9"/>
+<path d="M640 1110 C750 920 780 760 800 560 C820 360 920 270 1030 240" fill="none" stroke="#3ecf78" stroke-width="7" opacity=".55"/>
+<g font-family="Arial,Helvetica,sans-serif">
+  <text x="72" y="96" font-size="54" font-weight="800" fill="#171717">CIM<tspan fill="#f5b700">A</tspan>LY</text>
+  <rect x="72" y="145" rx="18" width="170" height="54" fill="#2f8f46"/><text x="157" y="182" text-anchor="middle" font-size="26" font-weight="700" fill="white">SERIES</text>
+  <text x="72" y="330" font-size="116" font-weight="900" fill="#14532d">LANTERNS</text>
+  <text x="72" y="390" font-size="36" font-weight="700" fill="#295b3d">NEW SERIES</text>
+  <text x="72" y="455" font-size="34" font-weight="600" fill="#242424">THE LIGHT NEVER LIES.</text>
+  <g font-size="24" font-weight="700" fill="#1f2937"><rect x="72" y="505" rx="16" width="120" height="48" fill="#fff" opacity=".88"/><text x="132" y="538" text-anchor="middle">SCI-FI</text><rect x="210" y="505" rx="16" width="130" height="48" fill="#fff" opacity=".88"/><text x="275" y="538" text-anchor="middle">ACTION</text><rect x="358" y="505" rx="16" width="120" height="48" fill="#fff" opacity=".88"/><text x="418" y="538" text-anchor="middle">DRAMA</text></g>
+  <text x="72" y="720" font-size="36" font-weight="700" fill="#14532d">Two intergalactic cops are drawn into</text>
+  <text x="72" y="765" font-size="36" font-weight="700" fill="#14532d">a dark Earth-based mystery.</text>
+  <rect x="72" y="1040" width="620" height="118" rx="34" fill="url(#cta)" filter="url(#shadow)"/>
+  <text x="382" y="1090" text-anchor="middle" font-size="28" font-weight="700" fill="#171717">WATCH NOW ON</text>
+  <text x="382" y="1138" text-anchor="middle" font-size="46" font-weight="900" fill="#171717">cimaly.cc</text>
+  <text x="72" y="1260" font-size="24" font-weight="700" fill="#334155">HD • ALL DEVICES • NEW EPISODES</text>
+</g>
+</svg>

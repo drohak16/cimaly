@@ -2,6 +2,9 @@ name: Cimaly Daily Social
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/cimaly-social.yml"
   schedule:
     # 21:00 Istanbul. Prepares the next 00:30 carousel and 19:30 movie.
     - cron: "0 18 * * *"

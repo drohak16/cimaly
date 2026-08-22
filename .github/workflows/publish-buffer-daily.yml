@@ -1,7 +1,12 @@
-name: Publish Buffer Daily (manual fallback)
+name: Publish Buffer Daily
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - data/publish-trigger.txt
 
 jobs:
   publish:

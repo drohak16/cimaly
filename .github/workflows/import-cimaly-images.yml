@@ -1,10 +1,7 @@
-name: Import Cimaly Images And Publish
+name: Import Cimaly Images And Publish (legacy manual fallback)
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - "data/social-image-urls.json"
 
 permissions:
   contents: write
@@ -53,21 +50,20 @@ jobs:
           test "$PACK_SERIES_TMDB_ID" = "$SERIES_TMDB_ID" || { echo "❌ Series image pack TMDB ID mismatch"; exit 1; }
           test "$PACK_ANIME_TMDB_ID" = "$ANIME_TMDB_ID" || { echo "❌ Anime image pack TMDB ID mismatch"; exit 1; }
           test "$PACK_MOVIE_TMDB_ID" = "$MOVIE_TMDB_ID" || { echo "❌ Movie image pack TMDB ID mismatch"; exit 1; }
-          echo "✅ All image pack IDs match today's selection"
 
       - name: Validate source URLs
         shell: bash
         run: |
           set -euo pipefail
           for url in "$SERIES_EN" "$SERIES_AR" "$ANIME_EN" "$ANIME_AR" "$MOVIE_EN" "$MOVIE_AR"; do
-            [ -n "$url" ] && [ "$url" != "null" ] || { echo "❌ Missing image URL"; exit 1; }
+            [ -n "$url" ] && [ "$url" != "null" ] || { echo "❌ Missing legacy image URL"; exit 1; }
             case "$url" in
               http://*|https://*) ;;
               *) echo "❌ Invalid image URL: $url"; exit 1 ;;
             esac
           done
 
-      - name: Download six ChatGPT visuals into GitHub
+      - name: Download six manual fallback visuals into GitHub
         shell: bash
         run: |
           set -euo pipefail
@@ -79,78 +75,21 @@ jobs:
           curl --retry 3 --retry-delay 2 -fL "$MOVIE_EN" -o "public/social/daily/en/movie-${MOVIE_TMDB_ID}.jpg"
           curl --retry 3 --retry-delay 2 -fL "$MOVIE_AR" -o "public/social/daily/ar/movie-${MOVIE_TMDB_ID}.jpg"
 
-      - name: Verify downloaded images
-        shell: bash
-        run: |
-          set -euo pipefail
-          for file in \
-            "public/social/daily/en/series-${SERIES_TMDB_ID}.jpg" \
-            "public/social/daily/ar/series-${SERIES_TMDB_ID}.jpg" \
-            "public/social/daily/en/anime-${ANIME_TMDB_ID}.jpg" \
-            "public/social/daily/ar/anime-${ANIME_TMDB_ID}.jpg" \
-            "public/social/daily/en/movie-${MOVIE_TMDB_ID}.jpg" \
-            "public/social/daily/ar/movie-${MOVIE_TMDB_ID}.jpg"; do
-            test -s "$file"
-            file "$file" | grep -Eqi 'JPEG|PNG|WebP image data'
-          done
-          echo "✅ All six visuals are valid"
-
-      - name: Commit exact ID-bound images
+      - name: Commit fallback images
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "cimaly-social-bot"
           git config user.email "actions@github.com"
           git add -- public/social/daily
-          if git diff --cached --quiet; then
-            echo "No image changes"
-          else
-            git commit -m "Import today's ChatGPT Cimaly visuals"
+          if ! git diff --cached --quiet; then
+            git commit -m "Import manual Cimaly fallback visuals"
             git push origin HEAD:main
           fi
 
-      - name: Refresh checkout after image commit
-        shell: bash
-        run: |
-          git pull --rebase origin main
-
-      - name: Verify GitHub raw image URLs
-        shell: bash
-        run: |
-          set -euo pipefail
-          BASE="https://raw.githubusercontent.com/drohak16/cimaly/main/public/social/daily"
-          for relative in \
-            "en/series-${SERIES_TMDB_ID}.jpg" \
-            "ar/series-${SERIES_TMDB_ID}.jpg" \
-            "en/anime-${ANIME_TMDB_ID}.jpg" \
-            "ar/anime-${ANIME_TMDB_ID}.jpg" \
-            "en/movie-${MOVIE_TMDB_ID}.jpg" \
-            "ar/movie-${MOVIE_TMDB_ID}.jpg"; do
-            curl --retry 5 --retry-delay 2 -fsSL "$BASE/$relative" -o /tmp/cimaly-check
-            test -s /tmp/cimaly-check
-          done
-          echo "✅ GitHub raw images are public and ready for Buffer"
-
-      - name: Schedule Facebook and Instagram in Buffer
+      - name: Schedule Buffer posts
         env:
           BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
           BUFFER_CHANNEL_ID_FACEBOOK: ${{ secrets.BUFFER_CHANNEL_ID_FACEBOOK }}
           BUFFER_CHANNEL_ID_INSTAGRAM: ${{ secrets.BUFFER_CHANNEL_ID_INSTAGRAM }}
         run: node scripts/publish-buffer-daily.js
-
-      - name: Persist anti-duplicate history
-        if: always()
-        shell: bash
-        run: |
-          set -euo pipefail
-          [ -f data/published-social-history.json ] || echo '{"items":[]}' > data/published-social-history.json
-          git config user.name "cimaly-social-bot"
-          git config user.email "actions@github.com"
-          git add -- data/published-social-history.json
-          if git diff --cached --quiet; then
-            echo "No publication history changes"
-          else
-            git commit -m "Persist Cimaly anti-duplicate history"
-            git pull --rebase origin main
-            git push origin HEAD:main
-          fi

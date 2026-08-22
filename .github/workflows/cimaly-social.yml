@@ -6,7 +6,7 @@ on:
     paths:
       - ".github/workflows/cimaly-social.yml"
   schedule:
-    # 21:00 Istanbul. Prepares the next 00:30 carousel and 19:30 movie.
+    # 21:00 Istanbul. Prepares the next 01:30 carousel and 19:30 movie.
     - cron: "0 18 * * *"
 
 permissions:
@@ -128,6 +128,14 @@ jobs:
             test -s /tmp/cimaly-check
           done
           echo "✅ GitHub image URLs are public"
+
+      - name: Force series anime carousel time to 01:30 Istanbul
+        shell: bash
+        run: |
+          set -euo pipefail
+          sed -i 's/getNextIstanbulSchedule(0, 30)/getNextIstanbulSchedule(1, 30)/' scripts/publish-buffer-daily.js
+          grep -q 'getNextIstanbulSchedule(1, 30)' scripts/publish-buffer-daily.js
+          echo "✅ Series + anime carousel set to 01:30 Europe/Istanbul"
 
       - name: Schedule Buffer posts
         env:

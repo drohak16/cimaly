@@ -102,8 +102,8 @@ async function main() {
   console.log("Validating all six Cimaly images before scheduling anything...");
   await Promise.all(POSTS.map(p => assertImage(p.image)));
 
-  const dueAt = getIstanbulDueAt(3, 0);
-  console.log(`Scheduling all six language-specific posts for ${dueAt} (03:00 Istanbul)`);
+  const dueAt = getIstanbulDueAt(3, 30);
+  console.log(`Scheduling all six language-specific posts for ${dueAt} (03:30 Istanbul)`);
 
   for (const post of POSTS) {
     await Promise.all([

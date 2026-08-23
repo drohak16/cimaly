@@ -1,10 +1,8 @@
 const BUFFER_API_URL = "https://api.buffer.com";
-const IMAGE_BASE = "https://raw.githubusercontent.com/drohak16/cimaly/main/public/social/cimaly-2026-08-23";
+const IMAGE_BASE = "https://raw.githubusercontent.com/drohak16/cimaly/main/public/social/cimaly-2026-08-24-hd";
 
 const REQUIRED = ["BUFFER_API_KEY", "BUFFER_CHANNEL_ID_FACEBOOK", "BUFFER_CHANNEL_ID_INSTAGRAM"];
-for (const key of REQUIRED) {
-  if (!process.env[key]) throw new Error(`Missing required secret: ${key}`);
-}
+for (const key of REQUIRED) if (!process.env[key]) throw new Error(`Missing required secret: ${key}`);
 
 const cfg = {
   bufferApiKey: process.env.BUFFER_API_KEY,
@@ -14,36 +12,21 @@ const cfg = {
 
 const POSTS = [
   {
-    key: "series-bilingual",
-    images: [`${IMAGE_BASE}/series-en.jpg`, `${IMAGE_BASE}/series-ar.jpg`],
-    text: `📺 LANTERNS — NEW SERIES\n\nTwo intergalactic officers are drawn into a dark Earth-based mystery while investigating a murder in the American heartland.\n\n📺 لانترنز — مسلسل جديد\n\nشرطيان من شرطة الفضاء يجدان نفسيهما متورطين في لغز غامض على الأرض أثناء التحقيق في جريمة قتل.\n\n▶️ Watch now / شاهد الآن على Cimaly\nhttps://cimaly.cc/tv/95350\n\n#Cimaly #Lanterns #Series #SciFi #Drama #مسلسلات #خيال_علمي #شاهد_الآن`,
-  },
-  {
-    key: "anime-bilingual",
-    images: [`${IMAGE_BASE}/anime-en.jpg`, `${IMAGE_BASE}/anime-ar.jpg`],
-    text: `🔥 BLACK TORCH — NEW ANIME\n\nJiro Azuma, a descendant of ninjas who can speak with animals, discovers that a mysterious injured cat carries a legendary supernatural power.\n\n🔥 بلاك تورش — أنمي جديد\n\nجيرو أزوما من سلالة النينجا ويستطيع التحدث مع الحيوانات. بعد لقائه بقط غامض، يكتشف قوة أسطورية خارقة تغيّر حياته.\n\n▶️ Watch now / شاهد الآن على Cimaly\nhttps://cimaly.cc/tv/285993\n\n#Cimaly #BlackTorch #Anime #Action #Fantasy #انمي #أكشن #خيال`,
-  },
-  {
-    key: "film-bilingual",
+    key: "film-bilingual-hd",
     images: [`${IMAGE_BASE}/film-en.jpg`, `${IMAGE_BASE}/film-ar.jpg`],
-    text: `🎬 THE SUMMER BEYOND THE SKY\n\nSometimes, summer changes more than time. A quiet coming-of-age story about two students looking beyond the city and toward what comes next.\n\n🎬 ذلك الصيف ما وراء السماء\n\nأحيانًا، يغيّر الصيف أكثر من الوقت. حكاية هادئة عن شابين أمام أفق جديد، بين الرومانسية والحياة اليومية وما ينتظرهما بعد ذلك.\n\n▶️ Watch now / شاهد الآن على Cimaly\nhttps://cimaly.cc\n\n#Cimaly #Movie #Drama #Romance #AnimeMovie #فيلم #دراما #رومانسية`,
+    text: `🎬 TOY STORY 5\n\nToy meets tech in a new chapter where playtime faces a very different kind of challenge.\n\n🎬 حكاية لعبة 5\n\nالألعاب تواجه عالم التكنولوجيا في فصل جديد يغيّر شكل وقت اللعب.\n\n▶️ Watch now / شاهد الآن على Cimaly\nhttps://cimaly.cc\n\n#Cimaly #ToyStory5 #Movie #Animation #Comedy #فيلم #رسوم_متحركة #كوميديا`,
+  },
+  {
+    key: "series-bilingual-hd",
+    images: [`${IMAGE_BASE}/series-en.jpg`, `${IMAGE_BASE}/series-ar.jpg`],
+    text: `📺 REACHER — SEASON 4\n\nA new conspiracy pulls Reacher into another high-stakes investigation where every clue matters.\n\n📺 ريشر — الموسم 4\n\nمؤامرة جديدة تجر ريشر إلى تحقيق خطير حيث كل دليل قد يغيّر كل شيء.\n\n▶️ Watch now / شاهد الآن على Cimaly\nhttps://cimaly.cc\n\n#Cimaly #Reacher #Series #Action #Thriller #مسلسل #أكشن #تشويق`,
+  },
+  {
+    key: "anime-bilingual-hd",
+    images: [`${IMAGE_BASE}/anime-en.jpg`, `${IMAGE_BASE}/anime-ar.jpg`],
+    text: `✨ FRIEREN: BEYOND JOURNEY'S END — SEASON 2\n\nFrieren, Fern and Stark continue their journey north, carrying memories and new discoveries with them.\n\n✨ فريرن: ما وراء نهاية الرحلة — الموسم 2\n\nتواصل فريرن وفيرن وستارك رحلتهم نحو الشمال بين الذكريات والاكتشافات الجديدة.\n\n▶️ Watch now / شاهد الآن على Cimaly\nhttps://cimaly.cc\n\n#Cimaly #Frieren #Anime #Fantasy #Adventure #انمي #خيال #مغامرة`,
   },
 ];
-
-function getIstanbulDueAt(hour, minute) {
-  const now = new Date();
-  const fmt = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/Istanbul",
-    year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", hourCycle: "h23",
-  });
-  const parts = Object.fromEntries(fmt.formatToParts(now).filter(p => p.type !== "literal").map(p => [p.type, p.value]));
-  let day = Number(parts.day);
-  const currentHour = Number(parts.hour);
-  const currentMinute = Number(parts.minute);
-  if (currentHour > hour || (currentHour === hour && currentMinute >= minute)) day += 1;
-  return new Date(Date.UTC(Number(parts.year), Number(parts.month) - 1, day, hour - 3, minute, 0)).toISOString();
-}
 
 async function assertImage(url) {
   let r = await fetch(url, { method: "HEAD", redirect: "follow" });
@@ -85,12 +68,10 @@ async function createPost(network, channelId, post, dueAt) {
 }
 
 async function main() {
-  console.log("Validating all six Cimaly images before scheduling three bilingual posts...");
+  console.log("Validating six Best Method HD assets...");
   await Promise.all([...new Set(POSTS.flatMap(p => p.images))].map(assertImage));
-
-  const dueAt = getIstanbulDueAt(4, 45);
-  console.log(`Scheduling three bilingual Cimaly posts for ${dueAt} (04:45 Istanbul)`);
-
+  const dueAt = "2026-08-23T21:15:00.000Z"; // 00:15 Europe/Istanbul, Aug 24
+  console.log(`Scheduling three bilingual Best Method HD posts for ${dueAt}`);
   for (const post of POSTS) {
     await Promise.all([
       createPost("facebook", cfg.facebookChannelId, post, dueAt),
@@ -99,7 +80,4 @@ async function main() {
   }
 }
 
-main().catch(err => {
-  console.error(`❌ ${err.message}`);
-  process.exit(1);
-});
+main().catch(err => { console.error(`❌ ${err.message}`); process.exit(1); });

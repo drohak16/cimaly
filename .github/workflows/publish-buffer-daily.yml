@@ -1,4 +1,4 @@
-name: Publish Final Cimaly Posts
+name: Publish Cimaly Best Method HD
 
 on:
   workflow_dispatch:
@@ -26,45 +26,47 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install image tools
+      - name: Install HD image tools and fonts
         run: |
           sudo apt-get update
-          sudo apt-get install -y imagemagick libheif-examples
+          sudo apt-get install -y librsvg2-bin imagemagick fonts-noto-core fonts-dejavu-core
 
-      - name: Render the six final Cimaly images
+      - name: Build six 2160x2700 SVG masters
+        run: node scripts/render-best-method-hd.js
+
+      - name: Export optimized 1080x1350 social JPGs
         run: |
           set -euo pipefail
-          SRC="public/social/cimaly-2026-08-23/source"
-          OUT="public/social/cimaly-2026-08-23"
-          TMP="/tmp/cimaly-final"
+          SRC="public/social/cimaly-2026-08-24-hd/source"
+          OUT="public/social/cimaly-2026-08-24-hd"
+          TMP="/tmp/cimaly-hd"
           mkdir -p "$OUT" "$TMP"
-
-          for name in series-en series-ar anime-en anime-ar film-en film-ar; do
-            heif-convert "$SRC/$name.avif" "$TMP/$name.png"
-            convert "$TMP/$name.png" -resize '1080x1350!' -quality 92 "$OUT/$name.jpg"
+          for name in film-en film-ar series-en series-ar anime-en anime-ar; do
+            rsvg-convert -w 2160 -h 2700 "$SRC/$name.svg" -o "$TMP/$name-master.png"
+            convert "$TMP/$name-master.png" -filter Lanczos -resize '1080x1350!' -colorspace sRGB -quality 98 -sampling-factor 4:4:4 "$OUT/$name.jpg"
           done
 
-      - name: Commit final JPG social images
+      - name: Commit HD social assets
         run: |
           set -euo pipefail
           git config user.name "cimaly-social-bot"
           git config user.email "actions@github.com"
-          git add public/social/cimaly-2026-08-23/*.jpg
+          git add public/social/cimaly-2026-08-24-hd
           if ! git diff --cached --quiet; then
-            git commit -m "Render final Cimaly social JPGs"
+            git commit -m "Render Cimaly Best Method HD assets"
             git push origin HEAD:main
           fi
 
-      - name: Verify all six public image URLs
+      - name: Verify all six HD image URLs
         run: |
           set -euo pipefail
-          sleep 10
-          BASE="https://raw.githubusercontent.com/drohak16/cimaly/main/public/social/cimaly-2026-08-23"
-          for name in series-en series-ar anime-en anime-ar film-en film-ar; do
-            curl -fL --retry 5 --retry-delay 3 "$BASE/$name.jpg" -o /dev/null
+          sleep 8
+          BASE="https://raw.githubusercontent.com/drohak16/cimaly/main/public/social/cimaly-2026-08-24-hd"
+          for name in film-en film-ar series-en series-ar anime-en anime-ar; do
+            curl -fL --retry 5 --retry-delay 2 "$BASE/$name.jpg" -o /dev/null
           done
 
-      - name: Publish Cimaly posts to Buffer at 03:30 Istanbul
+      - name: Schedule 3 bilingual posts in Buffer for 00:15 Istanbul
         env:
           BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
           BUFFER_CHANNEL_ID_FACEBOOK: ${{ secrets.BUFFER_CHANNEL_ID_FACEBOOK }}

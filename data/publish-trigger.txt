@@ -1,3 +1,4 @@
-Publish the 6 final Cimaly posts supplied in ChatGPT: series EN/AR, anime EN/AR, film EN/AR.
-Schedule: 03:30 Europe/Istanbul on 2026-08-23.
+Publish 3 bilingual Cimaly carousel posts: series EN+AR, anime EN+AR, film EN+AR.
+Schedule: 04:45 Europe/Istanbul on 2026-08-23.
 Use only public/social/cimaly-2026-08-23 final assets. No Cloudinary. No Supabase.
+Triggered: 2026-08-23 04:39 Europe/Istanbul.

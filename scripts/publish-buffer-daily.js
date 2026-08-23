@@ -14,34 +14,19 @@ const cfg = {
 
 const POSTS = [
   {
-    key: "series-en",
-    image: `${IMAGE_BASE}/series-en.jpg`,
-    text: `📺 LANTERNS — NEW SERIES\n\nTwo intergalactic officers are drawn into a dark Earth-based mystery while investigating a murder in the American heartland.\n\n▶️ Watch now on Cimaly\nhttps://cimaly.cc/tv/95350\n\n#Cimaly #Lanterns #Series #SciFi #Drama #Streaming #WatchNow`,
+    key: "series-bilingual",
+    images: [`${IMAGE_BASE}/series-en.jpg`, `${IMAGE_BASE}/series-ar.jpg`],
+    text: `📺 LANTERNS — NEW SERIES\n\nTwo intergalactic officers are drawn into a dark Earth-based mystery while investigating a murder in the American heartland.\n\n📺 لانترنز — مسلسل جديد\n\nشرطيان من شرطة الفضاء يجدان نفسيهما متورطين في لغز غامض على الأرض أثناء التحقيق في جريمة قتل.\n\n▶️ Watch now / شاهد الآن على Cimaly\nhttps://cimaly.cc/tv/95350\n\n#Cimaly #Lanterns #Series #SciFi #Drama #مسلسلات #خيال_علمي #شاهد_الآن`,
   },
   {
-    key: "series-ar",
-    image: `${IMAGE_BASE}/series-ar.jpg`,
-    text: `📺 الفوانيس — مسلسل جديد\n\nشرطيان من شرطة الفضاء يجدان نفسيهما متورطين في لغز غامض على الأرض أثناء التحقيق في جريمة قتل.\n\n▶️ شاهد الآن على Cimaly\nhttps://cimaly.cc/tv/95350\n\n#Cimaly #الفوانيس #مسلسلات #خيال_علمي #دراما #شاهد_الآن`,
+    key: "anime-bilingual",
+    images: [`${IMAGE_BASE}/anime-en.jpg`, `${IMAGE_BASE}/anime-ar.jpg`],
+    text: `🔥 BLACK TORCH — NEW ANIME\n\nJiro Azuma, a descendant of ninjas who can speak with animals, discovers that a mysterious injured cat carries a legendary supernatural power.\n\n🔥 بلاك تورش — أنمي جديد\n\nجيرو أزوما من سلالة النينجا ويستطيع التحدث مع الحيوانات. بعد لقائه بقط غامض، يكتشف قوة أسطورية خارقة تغيّر حياته.\n\n▶️ Watch now / شاهد الآن على Cimaly\nhttps://cimaly.cc/tv/285993\n\n#Cimaly #BlackTorch #Anime #Action #Fantasy #انمي #أكشن #خيال`,
   },
   {
-    key: "anime-en",
-    image: `${IMAGE_BASE}/anime-en.jpg`,
-    text: `🔥 BLACK TORCH — NEW ANIME\n\nJiro Azuma, a descendant of ninjas who can speak with animals, discovers that a mysterious injured cat carries a legendary supernatural power.\n\n▶️ Watch now on Cimaly\nhttps://cimaly.cc/tv/285993\n\n#Cimaly #BlackTorch #Anime #Action #Fantasy #Streaming #WatchNow`,
-  },
-  {
-    key: "anime-ar",
-    image: `${IMAGE_BASE}/anime-ar.jpg`,
-    text: `🔥 بلاك تورش — أنمي جديد\n\nجيرو أزوما من سلالة النينجا ويستطيع التحدث مع الحيوانات. بعد لقائه بقط غامض، يكتشف قوة أسطورية خارقة تغيّر حياته.\n\n▶️ شاهد الآن على Cimaly\nhttps://cimaly.cc/tv/285993\n\n#Cimaly #بلاك_تورش #انمي #أكشن #خيال #شاهد_الآن`,
-  },
-  {
-    key: "film-en",
-    image: `${IMAGE_BASE}/film-en.jpg`,
-    text: `🎬 THE SUMMER BEYOND THE SKY\n\nSometimes, summer changes more than time. A quiet coming-of-age story about two students looking beyond the city and toward what comes next.\n\n▶️ Watch now on Cimaly\nhttps://cimaly.cc\n\n#Cimaly #Movie #Drama #Romance #AnimeMovie #Streaming #WatchNow`,
-  },
-  {
-    key: "film-ar",
-    image: `${IMAGE_BASE}/film-ar.jpg`,
-    text: `🎬 ذلك الصيف ما وراء السماء\n\nأحيانًا، يغيّر الصيف أكثر من الوقت. حكاية هادئة عن شابين أمام أفق جديد، بين الرومانسية والحياة اليومية وما ينتظرهما بعد ذلك.\n\n▶️ شاهد الآن على Cimaly\nhttps://cimaly.cc\n\n#Cimaly #فيلم #دراما #رومانسية #انمي #شاهد_الآن`,
+    key: "film-bilingual",
+    images: [`${IMAGE_BASE}/film-en.jpg`, `${IMAGE_BASE}/film-ar.jpg`],
+    text: `🎬 THE SUMMER BEYOND THE SKY\n\nSometimes, summer changes more than time. A quiet coming-of-age story about two students looking beyond the city and toward what comes next.\n\n🎬 ذلك الصيف ما وراء السماء\n\nأحيانًا، يغيّر الصيف أكثر من الوقت. حكاية هادئة عن شابين أمام أفق جديد، بين الرومانسية والحياة اليومية وما ينتظرهما بعد ذلك.\n\n▶️ Watch now / شاهد الآن على Cimaly\nhttps://cimaly.cc\n\n#Cimaly #Movie #Drama #Romance #AnimeMovie #فيلم #دراما #رومانسية`,
   },
 ];
 
@@ -72,6 +57,7 @@ function metadata(network) {
 }
 
 async function createPost(network, channelId, post, dueAt) {
+  const assets = post.images.map(url => `{ image: { url: ${JSON.stringify(url)} } }`).join(", ");
   const query = `mutation CreatePost {
     createPost(input: {
       text: ${JSON.stringify(post.text)}
@@ -79,7 +65,7 @@ async function createPost(network, channelId, post, dueAt) {
       schedulingType: automatic
       mode: customScheduled
       dueAt: ${JSON.stringify(dueAt)}
-      assets: [{ image: { url: ${JSON.stringify(post.image)} } }]
+      assets: [${assets}]
       ${metadata(network)}
     }) {
       ... on PostActionSuccess { post { id text } }
@@ -99,11 +85,11 @@ async function createPost(network, channelId, post, dueAt) {
 }
 
 async function main() {
-  console.log("Validating all six Cimaly images before scheduling anything...");
-  await Promise.all(POSTS.map(p => assertImage(p.image)));
+  console.log("Validating all six Cimaly images before scheduling three bilingual posts...");
+  await Promise.all([...new Set(POSTS.flatMap(p => p.images))].map(assertImage));
 
-  const dueAt = getIstanbulDueAt(3, 30);
-  console.log(`Scheduling all six language-specific posts for ${dueAt} (03:30 Istanbul)`);
+  const dueAt = getIstanbulDueAt(4, 45);
+  console.log(`Scheduling three bilingual Cimaly posts for ${dueAt} (04:45 Istanbul)`);
 
   for (const post of POSTS) {
     await Promise.all([

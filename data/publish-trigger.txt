@@ -1,3 +1,3 @@
-Publish 6 separate Cimaly posts (series EN/AR, anime EN/AR, film EN/AR) at 03:00 Europe/Istanbul
-Triggered: 2026-08-23 03:02 Istanbul
-Relaunch requested from ChatGPT GitHub connector.
+Publish the 6 final Cimaly posts supplied in ChatGPT: series EN/AR, anime EN/AR, film EN/AR.
+Schedule: 03:30 Europe/Istanbul on 2026-08-23.
+Use only public/social/cimaly-2026-08-23 final assets. No Cloudinary. No Supabase.

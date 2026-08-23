@@ -1,9 +1,7 @@
-name: Publish Buffer Daily
+name: Publish Final Cimaly Posts
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "32 22 * * *" # 01:32 Europe/Istanbul
   push:
     branches:
       - main
@@ -28,47 +26,45 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install SVG renderer and Arabic fonts
+      - name: Install image tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y librsvg2-bin fonts-noto-core imagemagick
+          sudo apt-get install -y imagemagick libheif-examples
 
-      - name: Render four Cimaly images
+      - name: Render the six final Cimaly images
         run: |
           set -euo pipefail
-          mkdir -p public/social/daily/en public/social/daily/ar /tmp/cimaly-render
+          SRC="public/social/cimaly-2026-08-23/source"
+          OUT="public/social/cimaly-2026-08-23"
+          TMP="/tmp/cimaly-final"
+          mkdir -p "$OUT" "$TMP"
 
-          rsvg-convert -w 1080 -h 1350 public/social/source/en/series-95350.svg -o /tmp/cimaly-render/series-en.png
-          rsvg-convert -w 1080 -h 1350 public/social/source/ar/series-95350.svg -o /tmp/cimaly-render/series-ar.png
-          rsvg-convert -w 1080 -h 1350 public/social/source/en/anime-285993.svg -o /tmp/cimaly-render/anime-en.png
-          rsvg-convert -w 1080 -h 1350 public/social/source/ar/anime-285993.svg -o /tmp/cimaly-render/anime-ar.png
+          for name in series-en series-ar anime-en anime-ar film-en film-ar; do
+            heif-convert "$SRC/$name.avif" "$TMP/$name.png"
+            convert "$TMP/$name.png" -resize '1080x1350!' -quality 92 "$OUT/$name.jpg"
+          done
 
-          convert /tmp/cimaly-render/series-en.png -quality 92 public/social/daily/en/series-95350.jpg
-          convert /tmp/cimaly-render/series-ar.png -quality 92 public/social/daily/ar/series-95350.jpg
-          convert /tmp/cimaly-render/anime-en.png -quality 92 public/social/daily/en/anime-285993.jpg
-          convert /tmp/cimaly-render/anime-ar.png -quality 92 public/social/daily/ar/anime-285993.jpg
-
-      - name: Commit rendered social images
+      - name: Commit final JPG social images
         run: |
           set -euo pipefail
           git config user.name "cimaly-social-bot"
           git config user.email "actions@github.com"
-          git add public/social/daily
+          git add public/social/cimaly-2026-08-23/*.jpg
           if ! git diff --cached --quiet; then
-            git commit -m "Render Cimaly EN AR social visuals"
+            git commit -m "Render final Cimaly social JPGs"
             git push origin HEAD:main
           fi
 
-      - name: Verify public image URLs
+      - name: Verify all six public image URLs
         run: |
           set -euo pipefail
           sleep 10
-          curl -fL --retry 4 --retry-delay 3 https://raw.githubusercontent.com/drohak16/cimaly/main/public/social/daily/en/series-95350.jpg -o /dev/null
-          curl -fL --retry 4 --retry-delay 3 https://raw.githubusercontent.com/drohak16/cimaly/main/public/social/daily/ar/series-95350.jpg -o /dev/null
-          curl -fL --retry 4 --retry-delay 3 https://raw.githubusercontent.com/drohak16/cimaly/main/public/social/daily/en/anime-285993.jpg -o /dev/null
-          curl -fL --retry 4 --retry-delay 3 https://raw.githubusercontent.com/drohak16/cimaly/main/public/social/daily/ar/anime-285993.jpg -o /dev/null
+          BASE="https://raw.githubusercontent.com/drohak16/cimaly/main/public/social/cimaly-2026-08-23"
+          for name in series-en series-ar anime-en anime-ar film-en film-ar; do
+            curl -fL --retry 5 --retry-delay 3 "$BASE/$name.jpg" -o /dev/null
+          done
 
-      - name: Publish Cimaly posts to Buffer
+      - name: Publish Cimaly posts to Buffer at 03:30 Istanbul
         env:
           BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
           BUFFER_CHANNEL_ID_FACEBOOK: ${{ secrets.BUFFER_CHANNEL_ID_FACEBOOK }}

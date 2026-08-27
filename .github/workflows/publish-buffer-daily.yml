@@ -25,8 +25,8 @@ jobs:
       - name: Export optimized 1080x1350 JPGs
         run: |
           set -euo pipefail
-          SRC="public/social/cimaly-2026-08-27-1600-hd/source"
-          OUT="public/social/cimaly-2026-08-27-1600-hd"
+          SRC="public/social/cimaly-2026-08-27-1900-hd/source"
+          OUT="public/social/cimaly-2026-08-27-1900-hd"
           TMP="/tmp/cimaly-hd"
           mkdir -p "$OUT" "$TMP"
           for name in film-en film-ar series-en series-ar anime-en anime-ar; do
@@ -37,14 +37,14 @@ jobs:
         run: |
           git config user.name "cimaly-social-bot"
           git config user.email "actions@github.com"
-          git add public/social/cimaly-2026-08-27-1600-hd
-          if ! git diff --cached --quiet; then git commit -m "Render Cimaly 16h Best Method HD assets" && git push origin HEAD:main; fi
+          git add public/social/cimaly-2026-08-27-1900-hd
+          if ! git diff --cached --quiet; then git commit -m "Render Cimaly 19h Best Method HD assets" && git push origin HEAD:main; fi
       - name: Verify all six public URLs
         run: |
           sleep 8
-          BASE="https://raw.githubusercontent.com/drohak16/cimaly/main/public/social/cimaly-2026-08-27-1600-hd"
+          BASE="https://raw.githubusercontent.com/drohak16/cimaly/main/public/social/cimaly-2026-08-27-1900-hd"
           for name in film-en film-ar series-en series-ar anime-en anime-ar; do curl -fL --retry 5 --retry-delay 2 "$BASE/$name.jpg" -o /dev/null; done
-      - name: Schedule 3 bilingual posts in Buffer for 16:00 Istanbul
+      - name: Publish 3 bilingual posts in Buffer
         env:
           BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
           BUFFER_CHANNEL_ID_FACEBOOK: ${{ secrets.BUFFER_CHANNEL_ID_FACEBOOK }}

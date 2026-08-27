@@ -1,5 +1,5 @@
-Publish 3 Cimaly Best Method HD bilingual carousel posts: film EN+AR, series EN+AR, anime EN+AR.
-Titles: Toy Story 5 / Reacher Season 4 / Frieren Season 2.
-Schedule: 00:15 Europe/Istanbul on 2026-08-24.
-Use only public/social/cimaly-2026-08-24-hd assets. No Cloudinary. No Supabase.
-Triggered: 2026-08-23 23:56 Europe/Istanbul.
+Publish exactly 3 Cimaly Best Method HD bilingual carousel posts at 16:00 Europe/Istanbul on 2026-08-27.
+Film: Project Hail Mary — EN+AR same post.
+Series: A Knight of the Seven Kingdoms — EN+AR same post.
+Anime: Jujutsu Kaisen Season 3 — EN+AR same post.
+Use only public/social/cimaly-2026-08-27-1600-hd assets. Verify all 6 public JPG URLs before Buffer. No Cloudinary. No Supabase.

@@ -3,3 +3,4 @@ Film: Project Hail Mary — EN+AR same post.
 Series: A Knight of the Seven Kingdoms — EN+AR same post.
 Anime: Jujutsu Kaisen Season 3 — EN+AR same post.
 Use only public/social/cimaly-2026-08-27-1600-hd assets. Verify all 6 public JPG URLs before Buffer. No Cloudinary. No Supabase.
+Renderer fixed for ES modules; retry requested at 14:00 Istanbul.

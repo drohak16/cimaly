@@ -19,26 +19,29 @@ jobs:
       - name: Install HD tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y librsvg2-bin imagemagick fonts-noto-core fonts-dejavu-core
-      - name: Build six HD masters
-        run: node scripts/render-best-method-hd.js
-      - name: Export optimized 1080x1350 JPGs
+          sudo apt-get install -y imagemagick
+      - name: Require six ChatGPT-generated masters
         run: |
           set -euo pipefail
-          SRC="public/social/cimaly-2026-08-27-1900-hd/source"
-          OUT="public/social/cimaly-2026-08-27-1900-hd"
-          TMP="/tmp/cimaly-hd"
-          mkdir -p "$OUT" "$TMP"
+          SRC="public/social/cimaly-2026-08-27-1900-hd/chatgpt-source"
           for name in film-en film-ar series-en series-ar anime-en anime-ar; do
-            rsvg-convert -w 2160 -h 2700 "$SRC/$name.svg" -o "$TMP/$name-master.png"
-            convert "$TMP/$name-master.png" -filter Lanczos -resize '1080x1350!' -colorspace sRGB -quality 95 -sampling-factor 4:4:4 "$OUT/$name.jpg"
+            test -f "$SRC/$name.png" || { echo "Missing ChatGPT Image master: $SRC/$name.png"; exit 1; }
+          done
+      - name: Export Best Method HD 1080x1350 JPGs
+        run: |
+          set -euo pipefail
+          SRC="public/social/cimaly-2026-08-27-1900-hd/chatgpt-source"
+          OUT="public/social/cimaly-2026-08-27-1900-hd"
+          mkdir -p "$OUT"
+          for name in film-en film-ar series-en series-ar anime-en anime-ar; do
+            convert "$SRC/$name.png" -filter Lanczos -resize '2160x2700^' -gravity center -extent 2160x2700 -filter Lanczos -resize '1080x1350!' -unsharp 0x0.7+0.7+0.008 -colorspace sRGB -quality 95 -sampling-factor 4:4:4 "$OUT/$name.jpg"
           done
       - name: Commit HD assets
         run: |
           git config user.name "cimaly-social-bot"
           git config user.email "actions@github.com"
           git add public/social/cimaly-2026-08-27-1900-hd
-          if ! git diff --cached --quiet; then git commit -m "Render Cimaly 19h Best Method HD assets" && git push origin HEAD:main; fi
+          if ! git diff --cached --quiet; then git commit -m "Process ChatGPT Image Cimaly Best Method HD assets" && git push origin HEAD:main; fi
       - name: Verify all six public URLs
         run: |
           sleep 8

@@ -31,7 +31,7 @@ jobs:
           mkdir -p "$OUT" "$TMP"
           for name in film-en film-ar series-en series-ar anime-en anime-ar; do
             rsvg-convert -w 2160 -h 2700 "$SRC/$name.svg" -o "$TMP/$name-master.png"
-            convert "$TMP/$name-master.png" -filter Lanczos -resize '1080x1350!' -colorspace sRGB -quality 98 -sampling-factor 4:4:4 "$OUT/$name.jpg"
+            convert "$TMP/$name-master.png" -filter Lanczos -resize '1080x1350!' -colorspace sRGB -quality 95 -sampling-factor 4:4:4 "$OUT/$name.jpg"
           done
       - name: Commit HD assets
         run: |

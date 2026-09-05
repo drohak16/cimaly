@@ -19,34 +19,66 @@ jobs:
       - name: Install HD tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y imagemagick
-      - name: Require six ChatGPT-generated masters
+          sudo apt-get install -y imagemagick curl fonts-dejavu-core
+      - name: Build six Cimaly HD posters
+        shell: bash
         run: |
           set -euo pipefail
-          SRC="public/social/cimaly-2026-08-27-1900-hd/chatgpt-source"
-          for name in film-en film-ar series-en series-ar anime-en anime-ar; do
-            test -f "$SRC/$name.png" || { echo "Missing ChatGPT Image master: $SRC/$name.png"; exit 1; }
-          done
-      - name: Export Best Method HD 1080x1350 JPGs
-        run: |
-          set -euo pipefail
-          SRC="public/social/cimaly-2026-08-27-1900-hd/chatgpt-source"
           OUT="public/social/cimaly-2026-08-27-1900-hd"
+          rm -rf "$OUT"
           mkdir -p "$OUT"
-          for name in film-en film-ar series-en series-ar anime-en anime-ar; do
-            convert "$SRC/$name.png" -filter Lanczos -resize '2160x2700^' -gravity center -extent 2160x2700 -filter Lanczos -resize '1080x1350!' -unsharp 0x0.7+0.7+0.008 -colorspace sRGB -quality 95 -sampling-factor 4:4:4 "$OUT/$name.jpg"
-          done
+
+          MOVIE_SRC="https://www.impawards.com/2026/posters/motor_city_xlg.jpg"
+          ANIME_SRC="https://image.tmdb.org/t/p/original/pzujcdPAoH361NObVrtbA7zACE7.jpg"
+          SERIES_PAGE="https://www.netflix.com/tudum/articles/outer-banks-season-5-date-teaser-first-look-photos"
+          SERIES_SRC=$(curl -A 'Mozilla/5.0' -fsSL "$SERIES_PAGE" | tr '\n' ' ' | sed -n 's/.*property="og:image"[^>]*content="\([^"]*\)".*/\1/p' | head -n1)
+          if [ -z "$SERIES_SRC" ]; then
+            SERIES_SRC=$(curl -A 'Mozilla/5.0' -fsSL "$SERIES_PAGE" | tr '\n' ' ' | sed -n 's/.*content="\([^"]*\)"[^>]*property="og:image".*/\1/p' | head -n1)
+          fi
+          test -n "$SERIES_SRC" || { echo "Could not resolve Outer Banks key art"; exit 1; }
+
+          curl -A 'Mozilla/5.0' -fL --retry 4 --retry-delay 2 "$MOVIE_SRC" -o /tmp/movie.jpg
+          curl -A 'Mozilla/5.0' -fL --retry 4 --retry-delay 2 "$SERIES_SRC" -o /tmp/series.jpg
+          curl -A 'Mozilla/5.0' -fL --retry 4 --retry-delay 2 "$ANIME_SRC" -o /tmp/anime.jpg
+
+          render() {
+            src="$1"; out="$2"; category="$3"; title="$4"; cta="$5"
+            convert "$src" \
+              -filter Lanczos -resize '2160x2700^' -gravity center -extent 2160x2700 \
+              -fill 'rgba(0,0,0,0.35)' -draw 'rectangle 0,0 2160,390' \
+              -fill 'rgba(0,0,0,0.55)' -draw 'rectangle 0,2150 2160,2700' \
+              -font DejaVu-Sans -gravity north -fill white -pointsize 74 -annotate +0+90 'CIMALY' \
+              -fill '#ff2430' -pointsize 42 -annotate +0+210 "$category" \
+              -gravity south -fill white -stroke '#000000' -strokewidth 2 -pointsize 92 -annotate +0+310 "$title" \
+              -stroke none -fill white -pointsize 44 -annotate +0+150 "$cta" \
+              -fill '#ff2430' -pointsize 36 -annotate +0+82 'cimaly.cc' \
+              -filter Lanczos -resize '1080x1350!' -unsharp 0x0.7+0.7+0.008 -colorspace sRGB -quality 95 -sampling-factor 4:4:4 "$out"
+          }
+
+          render /tmp/movie.jpg  "$OUT/film-en.jpg"   "MOVIE"  "MOTOR CITY" "WATCH NOW"
+          render /tmp/movie.jpg  "$OUT/film-ar.jpg"   "فيلم"   "MOTOR CITY" "شاهد الآن"
+          render /tmp/series.jpg "$OUT/series-en.jpg" "SERIES" "OUTER BANKS — FINAL SEASON" "WATCH NOW"
+          render /tmp/series.jpg "$OUT/series-ar.jpg" "مسلسل"  "OUTER BANKS — FINAL SEASON" "شاهد الآن"
+          render /tmp/anime.jpg  "$OUT/anime-en.jpg"  "ANIME"  "THAT TIME I GOT REINCARNATED AS A SLIME" "WATCH NOW"
+          render /tmp/anime.jpg  "$OUT/anime-ar.jpg"  "أنمي"   "THAT TIME I GOT REINCARNATED AS A SLIME" "شاهد الآن"
+
+          identify "$OUT"/*.jpg
       - name: Commit HD assets
         run: |
           git config user.name "cimaly-social-bot"
           git config user.email "actions@github.com"
           git add public/social/cimaly-2026-08-27-1900-hd
-          if ! git diff --cached --quiet; then git commit -m "Process ChatGPT Image Cimaly Best Method HD assets" && git push origin HEAD:main; fi
+          if ! git diff --cached --quiet; then
+            git commit -m "Replace Cimaly Best Method HD posters"
+            git push origin HEAD:main
+          fi
       - name: Verify all six public URLs
         run: |
-          sleep 8
+          sleep 10
           BASE="https://raw.githubusercontent.com/drohak16/cimaly/main/public/social/cimaly-2026-08-27-1900-hd"
-          for name in film-en film-ar series-en series-ar anime-en anime-ar; do curl -fL --retry 5 --retry-delay 2 "$BASE/$name.jpg" -o /dev/null; done
+          for name in film-en film-ar series-en series-ar anime-en anime-ar; do
+            curl -fL --retry 5 --retry-delay 2 "$BASE/$name.jpg" -o /dev/null
+          done
       - name: Publish 3 bilingual posts in Buffer
         env:
           BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}

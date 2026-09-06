@@ -145,13 +145,59 @@ export const Route = createFileRoute("/watch/tv/$id/$season/$episode")({
 
 function WatchEpisode() {
   const { id, season, episode } = Route.useParams();
+  const { show, episodeData } = Route.useLoaderData();
+  const s = Number(season) || 1;
+  const e = Number(episode) || 1;
+
+  const imagePath =
+    episodeData?.still_path ||
+    show?.poster_path ||
+    show?.backdrop_path;
+  const thumbnail = imagePath
+    ? `https://image.tmdb.org/t/p/w780${imagePath}`
+    : undefined;
+
+  const showTitle = show?.name || show?.original_name || "TV Show";
+  const episodeTitle = episodeData?.name || `Episode ${e}`;
+
+  const videoObject =
+    show && thumbnail
+      ? {
+          "@context": "https://schema.org",
+          "@type": "VideoObject",
+          name: `${showTitle} - Season ${s} Episode ${e}${episodeTitle ? ` - ${episodeTitle}` : ""}`,
+          description:
+            episodeData?.overview ||
+            show?.overview ||
+            `Watch ${showTitle} season ${s} episode ${e} on Cimaly.`,
+          thumbnailUrl: [thumbnail],
+          ...(episodeData?.air_date
+            ? { uploadDate: `${episodeData.air_date}T00:00:00Z` }
+            : show?.first_air_date
+              ? { uploadDate: `${show.first_air_date}T00:00:00Z` }
+              : {}),
+          ...(episodeData?.runtime
+            ? { duration: `PT${Math.max(1, Number(episodeData.runtime))}M` }
+            : {}),
+          embedUrl: `https://vaplayer.ru/embed/tv/${id}/${s}/${e}`,
+          url: `${BASE_URL}/watch/tv/${id}/${s}/${e}`,
+        }
+      : null;
 
   return (
-    <WatchPage
-      type="tv"
-      id={id}
-      season={Number(season) || 1}
-      episode={Number(episode) || 1}
-    />
+    <>
+      {videoObject ? (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(videoObject) }}
+        />
+      ) : null}
+      <WatchPage
+        type="tv"
+        id={id}
+        season={s}
+        episode={e}
+      />
+    </>
   );
 }

@@ -22,7 +22,15 @@ export const validateBrowseSearch = (s: Record<string, unknown>): BrowseSearch =
   return out;
 };
 
-export function BrowsePage({ type, search }: { type: "movie" | "tv"; search: BrowseSearch }) {
+export function BrowsePage({
+  type,
+  search,
+  initialData,
+}: {
+  type: "movie" | "tv";
+  search: BrowseSearch;
+  initialData?: any;
+}) {
   const { t, lang } = useLang();
   const navigate = useNavigate();
   const isTv = type === "tv";
@@ -40,7 +48,9 @@ export function BrowsePage({ type, search }: { type: "movie" | "tv"; search: Bro
   if (sort === "vote_average.desc") q["vote_count.gte"] = 200;
   if (search.year) q[isTv ? "first_air_date_year" : "primary_release_year"] = search.year;
 
-  const { data, isLoading } = useTmdb(`/discover/${type}`, q);
+  const query = useTmdb(`/discover/${type}`, q);
+  const data = query.data ?? initialData;
+  const isLoading = query.isLoading && !initialData;
 
   const go = (patch: BrowseSearch) => {
     const next: BrowseSearch = { ...search, ...patch };

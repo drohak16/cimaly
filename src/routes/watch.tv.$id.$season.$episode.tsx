@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, notFound } from "@tanstack/react-router";
 import { WatchPage } from "@/components/WatchPage";
 import { tmdb } from "@/lib/tmdb";
 
@@ -6,8 +6,16 @@ const BASE_URL = "https://cimaly.cc";
 
 export const Route = createFileRoute("/watch/tv/$id/$season/$episode")({
   loader: async ({ params }) => {
-    const season = Number(params.season) || 1;
-    const episode = Number(params.episode) || 1;
+    if (!/^\d+$/.test(params.id)) {
+      throw notFound();
+    }
+
+    const season = Number(params.season);
+    const episode = Number(params.episode);
+
+    if (!Number.isInteger(season) || season < 1 || !Number.isInteger(episode) || episode < 1) {
+      throw notFound();
+    }
 
     const [show, seasonData] = await Promise.all([
       tmdb(
@@ -20,23 +28,25 @@ export const Route = createFileRoute("/watch/tv/$id/$season/$episode")({
       tmdb(`/tv/${params.id}/season/${season}`, {}, "en"),
     ]);
 
+    if (!show || show.__missingKey || !show.id || !seasonData || seasonData.__missingKey) {
+      throw notFound();
+    }
+
     const episodeData =
       seasonData?.episodes?.find(
         (item: any) => item.episode_number === episode,
       ) || null;
 
+    if (!episodeData || episodeData.__missingKey) {
+      throw notFound();
+    }
+
     return {
       id: params.id,
       season,
       episode,
-      show:
-        show && !show.__missingKey
-          ? show
-          : null,
-      episodeData:
-        episodeData && !episodeData.__missingKey
-          ? episodeData
-          : null,
+      show,
+      episodeData,
     };
   },
 

@@ -2,7 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { tmdbFetch } from "@/lib/tmdb.functions";
 
 const BASE_URL = "https://cimaly.cc";
-const TMDB_PAGES = 5;
+// TMDB returns about 20 results per page. 25 pages ~= 500 movie URLs.
+const TMDB_PAGES = 25;
 
 function escapeXml(value: string) {
   return value
@@ -36,17 +37,14 @@ export const Route = createFileRoute("/sitemap-movies[.]xml")({
           }
 
           for (const movie of result.data.results) {
-            if (
-              typeof movie?.id === "number" &&
-              movie.id > 0
-            ) {
+            if (typeof movie?.id === "number" && movie.id > 0) {
               movieIds.add(movie.id);
             }
           }
         }
 
         const urls = Array.from(movieIds).map(
-          (id) => `${BASE_URL}/movie/${id}`
+          (id) => `${BASE_URL}/movie/${id}`,
         );
 
         const xml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -55,7 +53,7 @@ ${urls
   .map(
     (url) => `  <url>
     <loc>${escapeXml(url)}</loc>
-  </url>`
+  </url>`,
   )
   .join("\n")}
 </urlset>`;

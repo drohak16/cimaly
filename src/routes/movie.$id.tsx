@@ -1,14 +1,20 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, notFound } from "@tanstack/react-router";
 import { DetailPage } from "@/components/DetailPage";
 import { IMG, tmdb } from "@/lib/tmdb";
 
 export const Route = createFileRoute("/movie/$id")({
   loader: async ({ params }) => {
+    if (!/^\d+$/.test(params.id)) {
+      throw notFound();
+    }
+
     const movie = await tmdb(`/movie/${params.id}`, {}, "en");
 
-    return {
-      movie: movie && !movie.__missingKey ? movie : null,
-    };
+    if (!movie || movie.__missingKey || !movie.id) {
+      throw notFound();
+    }
+
+    return { movie };
   },
 
   head: ({ loaderData, params }) => {

@@ -5,16 +5,25 @@ import { EmptyState, MediaRow, PlayIcon, SkeletonRows } from "./Cards";
 import { SeasonExplorer } from "./SeasonExplorer";
 import { toggleList, useMyList } from "@/lib/storage";
 
-export function DetailPage({ type, id }: { type: "movie" | "tv"; id: string }) {
+export function DetailPage({
+  type,
+  id,
+  initialData,
+}: {
+  type: "movie" | "tv";
+  id: string;
+  initialData?: any;
+}) {
   const { t, lang } = useLang();
   const list = useMyList();
-  const { data, isLoading } = useTmdb(
+  const { data: fetchedData, isLoading } = useTmdb(
     `/${type}/${id}`,
     { append_to_response: "credits,videos,external_ids,recommendations,similar" },
     true,
   );
+  const data = fetchedData || initialData;
 
-  if (isLoading)
+  if (!data && isLoading)
     return (
       <>
         <div className="page wrap">
@@ -27,7 +36,7 @@ export function DetailPage({ type, id }: { type: "movie" | "tv"; id: string }) {
   if (!data || data.__missingKey)
     return (
       <div className="page wrap">
-        <EmptyState title={data?.__missingKey ? t("tmdbErr") : t("tmdbErr")} />
+        <EmptyState title={t("tmdbErr")} />
       </div>
     );
 

@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, notFound } from "@tanstack/react-router";
 import { WatchPage } from "@/components/WatchPage";
 import { tmdb } from "@/lib/tmdb";
 
@@ -6,6 +6,10 @@ const BASE_URL = "https://cimaly.cc";
 
 export const Route = createFileRoute("/watch/movie/$id")({
   loader: async ({ params }) => {
+    if (!/^\d+$/.test(params.id)) {
+      throw notFound();
+    }
+
     const movie = await tmdb(
       `/movie/${params.id}`,
       {
@@ -14,11 +18,8 @@ export const Route = createFileRoute("/watch/movie/$id")({
       "en",
     );
 
-    if (!movie || movie.__missingKey) {
-      return {
-        id: params.id,
-        movie: null,
-      };
+    if (!movie || movie.__missingKey || !movie.id) {
+      throw notFound();
     }
 
     return {

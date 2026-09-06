@@ -120,6 +120,43 @@ export const Route = createFileRoute("/watch/movie/$id")({
 
 function WatchMovieRoute() {
   const { id } = Route.useParams();
+  const { movie } = Route.useLoaderData();
 
-  return <WatchPage type="movie" id={id} />;
+  const poster = movie?.poster_path
+    ? `https://image.tmdb.org/t/p/w780${movie.poster_path}`
+    : undefined;
+  const movieKey = movie?.external_ids?.imdb_id || id;
+
+  const videoObject =
+    movie && poster
+      ? {
+          "@context": "https://schema.org",
+          "@type": "VideoObject",
+          name: movie.title || movie.original_title || "Movie",
+          description:
+            movie.overview ||
+            `Watch ${movie.title || movie.original_title || "this movie"} on Cimaly.`,
+          thumbnailUrl: [poster],
+          ...(movie.release_date
+            ? { uploadDate: `${movie.release_date}T00:00:00Z` }
+            : {}),
+          ...(movie.runtime
+            ? { duration: `PT${Math.max(1, Number(movie.runtime))}M` }
+            : {}),
+          embedUrl: `https://vaplayer.ru/embed/movie/${movieKey}`,
+          url: `${BASE_URL}/watch/movie/${id}`,
+        }
+      : null;
+
+  return (
+    <>
+      {videoObject ? (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(videoObject) }}
+        />
+      ) : null}
+      <WatchPage type="movie" id={id} />
+    </>
+  );
 }

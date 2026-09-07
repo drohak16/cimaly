@@ -2,10 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { tmdbFetch } from "@/lib/tmdb.functions";
 
 const BASE_URL = "https://cimaly.cc";
-// SEO priority only: anime before 2000 stay available on the site.
-// Animation genre = 16. Origin country JP is used to focus this sitemap on anime.
+// Anime SEO sitemap: no minimum year filter, so long-running active titles
+// such as One Piece (1999) can still be prioritized when popular.
+// Animation genre = 16. Origin country JP focuses this sitemap on anime.
 const TMDB_PAGES = 25;
-const MIN_FIRST_AIR_DATE = "2000-01-01";
 
 function escapeXml(value: string) {
   return value
@@ -32,7 +32,6 @@ export const Route = createFileRoute("/sitemap-anime.xml")({
                 include_adult: false,
                 with_genres: "16",
                 with_origin_country: "JP",
-                "first_air_date.gte": MIN_FIRST_AIR_DATE,
               },
             },
           });

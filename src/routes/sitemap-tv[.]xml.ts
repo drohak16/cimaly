@@ -2,8 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { tmdbFetch } from "@/lib/tmdb.functions";
 
 const BASE_URL = "https://cimaly.cc";
+// SEO priority only: the full catalogue stays on Cimaly.
 // TMDB returns about 20 results per page. 25 pages ~= 500 TV detail URLs.
 const TMDB_PAGES = 25;
+const MIN_FIRST_AIR_DATE = "2000-01-01";
 
 function escapeXml(value: string) {
   return value
@@ -28,6 +30,7 @@ export const Route = createFileRoute("/sitemap-tv.xml")({
                 page,
                 sort_by: "popularity.desc",
                 include_adult: false,
+                "first_air_date.gte": MIN_FIRST_AIR_DATE,
               },
             },
           });

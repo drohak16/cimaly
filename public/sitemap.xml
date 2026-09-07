@@ -9,4 +9,7 @@
   <sitemap>
     <loc>https://cimaly.cc/sitemap-tv.xml</loc>
   </sitemap>
+  <sitemap>
+    <loc>https://cimaly.cc/sitemap-anime.xml</loc>
+  </sitemap>
 </sitemapindex>

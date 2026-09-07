@@ -2,15 +2,16 @@ import { createFileRoute } from "@tanstack/react-router";
 import { tmdbFetch } from "@/lib/tmdb.functions";
 
 const BASE_URL = "https://cimaly.cc";
-// TMDB returns about 20 results per page. 25 pages ~= 500 movie URLs.
+// TMDB returns about 20 results per page. 25 pages ~= 500 recent/popular movie URLs.
 const TMDB_PAGES = 25;
+const MIN_RELEASE_DATE = "2000-01-01";
 
 function escapeXml(value: string) {
   return value
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
+    .replace(/\"/g, "&quot;")
     .replace(/'/g, "&apos;");
 }
 
@@ -28,6 +29,7 @@ export const Route = createFileRoute("/sitemap-movies[.]xml")({
                 page,
                 sort_by: "popularity.desc",
                 include_adult: false,
+                "primary_release_date.gte": MIN_RELEASE_DATE,
               },
             },
           });
@@ -37,7 +39,12 @@ export const Route = createFileRoute("/sitemap-movies[.]xml")({
           }
 
           for (const movie of result.data.results) {
-            if (typeof movie?.id === "number" && movie.id > 0) {
+            const releaseDate = String(movie?.release_date || "");
+            if (
+              typeof movie?.id === "number" &&
+              movie.id > 0 &&
+              releaseDate >= MIN_RELEASE_DATE
+            ) {
               movieIds.add(movie.id);
             }
           }
@@ -51,9 +58,7 @@ export const Route = createFileRoute("/sitemap-movies[.]xml")({
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${urls
   .map(
-    (url) => `  <url>
-    <loc>${escapeXml(url)}</loc>
-  </url>`,
+    (url) => `  <url>\n    <loc>${escapeXml(url)}</loc>\n  </url>`,
   )
   .join("\n")}
 </urlset>`;

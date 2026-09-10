@@ -6,6 +6,7 @@ const BASE_URL = "https://cimaly.cc";
 // TMDB returns about 20 results per page. 25 pages ~= 500 TV detail URLs.
 const TMDB_PAGES = 25;
 const MIN_FIRST_AIR_DATE = "2000-01-01";
+const REMOVED_TV_IDS = new Set([103815]);
 
 function escapeXml(value: string) {
   return value
@@ -40,7 +41,11 @@ export const Route = createFileRoute("/sitemap-tv.xml")({
           }
 
           for (const show of result.data.results) {
-            if (typeof show?.id === "number" && show.id > 0) {
+            if (
+              typeof show?.id === "number" &&
+              show.id > 0 &&
+              !REMOVED_TV_IDS.has(show.id)
+            ) {
               tvIds.add(show.id);
             }
           }

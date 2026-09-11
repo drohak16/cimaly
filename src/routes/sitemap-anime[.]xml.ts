@@ -5,7 +5,7 @@ const BASE_URL = "https://cimaly.cc";
 // Anime SEO sitemap: no minimum year filter, so long-running active titles
 // such as One Piece (1999) can still be prioritized when popular.
 // Animation genre = 16. Origin country JP focuses this sitemap on anime.
-const TMDB_PAGES = 25;
+const TMDB_PAGES = 5;
 
 function escapeXml(value: string) {
   return value

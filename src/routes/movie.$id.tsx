@@ -2,9 +2,11 @@ import { createFileRoute, notFound } from "@tanstack/react-router";
 import { DetailPage } from "@/components/DetailPage";
 import { IMG, tmdb } from "@/lib/tmdb";
 
+const REMOVED_MOVIE_IDS = new Set(["823482"]);
+
 export const Route = createFileRoute("/movie/$id")({
   loader: async ({ params }) => {
-    if (!/^\d+$/.test(params.id)) {
+    if (!/^\d+$/.test(params.id) || REMOVED_MOVIE_IDS.has(params.id)) {
       throw notFound();
     }
 

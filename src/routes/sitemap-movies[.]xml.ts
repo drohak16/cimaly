@@ -2,8 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { tmdbFetch } from "@/lib/tmdb.functions";
 
 const BASE_URL = "https://cimaly.cc";
-// TMDB returns about 20 results per page. 25 pages ~= 500 recent/popular movie URLs.
-const TMDB_PAGES = 25;
+// TMDB returns about 20 results per page. 5 pages ~= 100 recent/popular movie URLs.
+const TMDB_PAGES = 5;
 const MIN_RELEASE_DATE = "2000-01-01";
 
 function escapeXml(value: string) {

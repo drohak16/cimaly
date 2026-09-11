@@ -3,8 +3,8 @@ import { tmdbFetch } from "@/lib/tmdb.functions";
 
 const BASE_URL = "https://cimaly.cc";
 // SEO priority only: the full catalogue stays on Cimaly.
-// TMDB returns about 20 results per page. 25 pages ~= 500 TV detail URLs.
-const TMDB_PAGES = 25;
+// TMDB returns about 20 results per page. 5 pages ~= 100 TV detail URLs.
+const TMDB_PAGES = 5;
 const MIN_FIRST_AIR_DATE = "2000-01-01";
 const REMOVED_TV_IDS = new Set([103815]);
 

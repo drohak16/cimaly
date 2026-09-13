@@ -31,9 +31,19 @@ export const Route = createFileRoute("/tv/$id")({
     const year = show?.first_air_date ? show.first_air_date.slice(0, 4) : "";
     const country = show?.origin_country?.[0] || show?.production_countries?.[0]?.name || "";
     const genre = show?.genres?.[0]?.name || "";
+    const currentYear = String(new Date().getUTCFullYear());
+    const popularity = Number(show?.popularity || 0);
+    const isCurrentYearTrending = year === currentYear && popularity >= 10;
+    const isAnime =
+      show?.genres?.some((g: { name?: string }) => g?.name === "Animation") &&
+      (show?.original_language === "ja" || show?.origin_country?.includes("JP"));
 
     const titleQualifier = country ? `${country} TV Series` : "TV Series";
-    const title = `${showTitle}${year ? ` (${year})` : ""} – ${titleQualifier} | Cimaly`;
+    const standardTitle = `${showTitle}${year ? ` (${year})` : ""} – ${titleQualifier} | Cimaly`;
+    const arabicTrendingTitle = isAnime
+      ? `${showTitle}${year ? ` (${year})` : ""} مترجم – أنمي | Cimaly`
+      : `${showTitle}${year ? ` (${year})` : ""} مترجم – مشاهدة المسلسل | Cimaly`;
+    const title = isCurrentYearTrending ? arabicTrendingTitle : standardTitle;
 
     const seoIntro = [
       `${showTitle}${year ? ` (${year})` : ""}`,
@@ -44,9 +54,13 @@ export const Route = createFileRoute("/tv/$id")({
       .join(" ");
 
     const overview = show?.overview?.trim() || "";
-    const description = overview
+    const standardDescription = overview
       ? `${seoIntro}. ${overview}`
       : `${seoIntro}. Discover seasons, episodes, cast, release information and more on Cimaly.`;
+    const arabicDescription = isAnime
+      ? `مشاهدة ${showTitle}${year ? ` (${year})` : ""} مترجم بالعربية. تابع الحلقات وتعرف على القصة، الشخصيات وتفاصيل الأنمي على Cimaly.`
+      : `مشاهدة مسلسل ${showTitle}${year ? ` (${year})` : ""} مترجم بالعربية. تابع الحلقات وتعرف على القصة، طاقم العمل وتفاصيل المسلسل على Cimaly.`;
+    const description = isCurrentYearTrending ? arabicDescription : standardDescription;
 
     const image = show?.poster_path ? `${IMG}w780${show.poster_path}` : undefined;
     const canonical = `https://cimaly.cc/tv/${params.id}`;

@@ -27,11 +27,27 @@ export const Route = createFileRoute("/tv/$id")({
     const show = loaderData?.show;
 
     const showTitle = show?.name || show?.original_name || "TV Show";
+    const originalTitle = show?.original_name && show.original_name !== showTitle ? show.original_name : "";
     const year = show?.first_air_date ? show.first_air_date.slice(0, 4) : "";
-    const title = `${showTitle}${year ? ` (${year})` : ""} – Cimaly`;
-    const description =
-      show?.overview?.trim() ||
-      `Discover ${showTitle}${year ? ` (${year})` : ""}, seasons, episodes, cast and more on Cimaly.`;
+    const country = show?.origin_country?.[0] || show?.production_countries?.[0]?.name || "";
+    const genre = show?.genres?.[0]?.name || "";
+
+    const titleQualifier = country ? `${country} TV Series` : "TV Series";
+    const title = `${showTitle}${year ? ` (${year})` : ""} – ${titleQualifier} | Cimaly`;
+
+    const seoIntro = [
+      `${showTitle}${year ? ` (${year})` : ""}`,
+      originalTitle ? `also known as ${originalTitle}` : "",
+      country ? `is a ${country}${genre ? ` ${genre}` : ""} TV series` : genre ? `is a ${genre} TV series` : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+    const overview = show?.overview?.trim() || "";
+    const description = overview
+      ? `${seoIntro}. ${overview}`
+      : `${seoIntro}. Discover seasons, episodes, cast, release information and more on Cimaly.`;
+
     const image = show?.poster_path ? `${IMG}w780${show.poster_path}` : undefined;
     const canonical = `https://cimaly.cc/tv/${params.id}`;
 

@@ -31,9 +31,19 @@ export const Route = createFileRoute("/movie/$id")({
     const year = movie?.release_date ? movie.release_date.slice(0, 4) : "";
     const country = movie?.production_countries?.[0]?.name || "";
     const genre = movie?.genres?.[0]?.name || "";
+    const currentYear = String(new Date().getUTCFullYear());
+    const popularity = Number(movie?.popularity || 0);
+    const isCurrentYearTrending = year === currentYear && popularity >= 10;
+    const isAnime =
+      movie?.genres?.some((g: { name?: string }) => g?.name === "Animation") &&
+      (movie?.original_language === "ja" || movie?.production_countries?.some((c: { iso_3166_1?: string }) => c?.iso_3166_1 === "JP"));
 
     const titleQualifier = country ? `${country} Movie` : "Movie";
-    const title = `${movieTitle}${year ? ` (${year})` : ""} – ${titleQualifier} | Cimaly`;
+    const standardTitle = `${movieTitle}${year ? ` (${year})` : ""} – ${titleQualifier} | Cimaly`;
+    const arabicTrendingTitle = isAnime
+      ? `${movieTitle}${year ? ` (${year})` : ""} مترجم – أنمي | Cimaly`
+      : `${movieTitle}${year ? ` (${year})` : ""} مترجم – مشاهدة الفيلم | Cimaly`;
+    const title = isCurrentYearTrending ? arabicTrendingTitle : standardTitle;
 
     const seoIntro = [
       `${movieTitle}${year ? ` (${year})` : ""}`,
@@ -44,9 +54,13 @@ export const Route = createFileRoute("/movie/$id")({
       .join(" ");
 
     const overview = movie?.overview?.trim() || "";
-    const description = overview
+    const standardDescription = overview
       ? `${seoIntro}. ${overview}`
       : `${seoIntro}. Discover cast, release information, details and more on Cimaly.`;
+    const arabicDescription = isAnime
+      ? `مشاهدة ${movieTitle}${year ? ` (${year})` : ""} مترجم بالعربية. تعرف على القصة، طاقم العمل وتفاصيل الأنمي على Cimaly.`
+      : `مشاهدة فيلم ${movieTitle}${year ? ` (${year})` : ""} مترجم بالعربية. تعرف على القصة، طاقم العمل وتفاصيل الفيلم على Cimaly.`;
+    const description = isCurrentYearTrending ? arabicDescription : standardDescription;
 
     const image = movie?.poster_path ? `${IMG}w780${movie.poster_path}` : undefined;
     const canonical = `https://cimaly.cc/movie/${params.id}`;

@@ -27,11 +27,27 @@ export const Route = createFileRoute("/movie/$id")({
     const movie = loaderData?.movie;
 
     const movieTitle = movie?.title || movie?.original_title || "Movie";
+    const originalTitle = movie?.original_title && movie.original_title !== movieTitle ? movie.original_title : "";
     const year = movie?.release_date ? movie.release_date.slice(0, 4) : "";
-    const title = `${movieTitle}${year ? ` (${year})` : ""} – Cimaly`;
-    const description =
-      movie?.overview?.trim() ||
-      `Discover ${movieTitle}${year ? ` (${year})` : ""}, cast, details and more on Cimaly.`;
+    const country = movie?.production_countries?.[0]?.name || "";
+    const genre = movie?.genres?.[0]?.name || "";
+
+    const titleQualifier = country ? `${country} Movie` : "Movie";
+    const title = `${movieTitle}${year ? ` (${year})` : ""} – ${titleQualifier} | Cimaly`;
+
+    const seoIntro = [
+      `${movieTitle}${year ? ` (${year})` : ""}`,
+      originalTitle ? `also known as ${originalTitle}` : "",
+      country ? `is a ${country}${genre ? ` ${genre}` : ""} movie` : genre ? `is a ${genre} movie` : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+    const overview = movie?.overview?.trim() || "";
+    const description = overview
+      ? `${seoIntro}. ${overview}`
+      : `${seoIntro}. Discover cast, release information, details and more on Cimaly.`;
+
     const image = movie?.poster_path ? `${IMG}w780${movie.poster_path}` : undefined;
     const canonical = `https://cimaly.cc/movie/${params.id}`;
 

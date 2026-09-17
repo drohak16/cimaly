@@ -9,9 +9,11 @@ export const Route = createFileRoute("/mylist")({
     meta: [
       { title: "My List — Cimaly" },
       { name: "description", content: "Your saved movies and TV shows on Cimaly." },
+      { name: "robots", content: "noindex, follow" },
       { property: "og:title", content: "My List — Cimaly" },
       { property: "og:description", content: "Your saved movies and TV shows." },
     ],
+    links: [{ rel: "canonical", href: "https://cimaly.cc/mylist" }],
   }),
   component: MyListPage,
 });

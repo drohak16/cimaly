@@ -1,53 +1,43 @@
-import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { createFileRoute, notFound } from "@tanstack/react-router";
 import { EmptyState, MediaCard, MediaRow, SkeletonRows } from "@/components/Cards";
 import { GENRES } from "@/lib/catalog";
 import { gname, useLang } from "@/lib/i18n";
 import { useTmdb } from "@/lib/tmdb";
 
 export const Route = createFileRoute("/genre/$slug")({
-head: ({ params }) => {
-  const genreName = params.slug
-    .split("-")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
+  beforeLoad: ({ params }) => {
+    if (!GENRES.some((genre) => genre.slug === params.slug)) {
+      throw notFound();
+    }
+  },
+  head: ({ params }) => {
+    const genreName = params.slug
+      .split("-")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
 
-  return {
-    meta: [
-      {
-        title: `${genreName} Movies & TV Shows — Cimaly`,
-      },
-      {
-        name: "description",
-        content: `Explore ${genreName} movies and TV shows on Cimaly. Discover popular and trending titles from around the world.`,
-      },
-      {
-        property: "og:title",
-        content: `${genreName} Movies & TV Shows — Cimaly`,
-      },
-      {
-        property: "og:description",
-        content: `Explore ${genreName} movies and TV shows on Cimaly.`,
-      },
-    ],
-
-    links: [
-      {
-        rel: "canonical",
-        href: `https://cimaly.cc/genre/${params.slug}`,
-      },
-    ],
-  };
-},  
+    return {
+      meta: [
+        { title: `${genreName} Movies & TV Shows — Cimaly` },
+        {
+          name: "description",
+          content: `Explore ${genreName} movies and TV shows on Cimaly. Discover popular and trending titles from around the world.`,
+        },
+        { property: "og:title", content: `${genreName} Movies & TV Shows — Cimaly` },
+        { property: "og:description", content: `Explore ${genreName} movies and TV shows on Cimaly.` },
+      ],
+      links: [{ rel: "canonical", href: `https://cimaly.cc/genre/${params.slug}` }],
+    };
+  },
   component: GenrePage,
 });
+
 function GenrePage() {
   const { slug } = Route.useParams();
   const { t, lang } = useLang();
-  const g = GENRES.find((x) => x.slug === slug);
-  const tvD = useTmdb(g ? "/discover/tv" : null, { with_genres: g?.tv ?? 0, sort_by: "popularity.desc" });
-  const mvD = useTmdb(g ? "/discover/movie" : null, { with_genres: g?.id ?? 0, sort_by: "popularity.desc" });
-
-  if (!g) return <Navigate to="/" />;
+  const g = GENRES.find((x) => x.slug === slug)!;
+  const tvD = useTmdb("/discover/tv", { with_genres: g.tv ?? 0, sort_by: "popularity.desc" });
+  const mvD = useTmdb("/discover/movie", { with_genres: g.id ?? 0, sort_by: "popularity.desc" });
   const name = gname(g, lang);
 
   return (

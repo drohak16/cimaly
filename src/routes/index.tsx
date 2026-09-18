@@ -5,6 +5,8 @@ import { useLang } from "@/lib/i18n";
 import { IMG, PLACEHOLDER, useTmdb } from "@/lib/tmdb";
 import { clearCw, removeCw, useContinueWatching } from "@/lib/storage";
 
+const HOME_URL = "https://cimaly.cc/";
+
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
@@ -12,7 +14,13 @@ export const Route = createFileRoute("/")({
       { name: "description", content: "Cimaly — global movies & TV shows, in English and Arabic." },
       { property: "og:title", content: "Cimaly — Movies & TV Shows" },
       { property: "og:description", content: "Global movies & TV shows, in English and Arabic." },
+      { property: "og:type", content: "website" },
+      { property: "og:url", content: HOME_URL },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Cimaly — Movies & TV Shows" },
+      { name: "twitter:description", content: "Global movies & TV shows, in English and Arabic." },
     ],
+    links: [{ rel: "canonical", href: HOME_URL }],
   }),
   component: Home,
 });

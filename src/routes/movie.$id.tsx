@@ -2,7 +2,7 @@ import { createFileRoute, notFound } from "@tanstack/react-router";
 import { DetailPage } from "@/components/DetailPage";
 import { IMG, tmdb } from "@/lib/tmdb";
 
-const REMOVED_MOVIE_IDS = new Set(["823482"]);
+const REMOVED_MOVIE_IDS = new Set(["823482", "49021"]);
 
 export const Route = createFileRoute("/movie/$id")({
   loader: async ({ params }) => {

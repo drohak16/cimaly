@@ -5,6 +5,7 @@ const BASE_URL = "https://cimaly.cc";
 // TMDB returns about 20 results per page. 5 pages ~= 100 recent/popular movie URLs.
 const TMDB_PAGES = 5;
 const MIN_RELEASE_DATE = "2000-01-01";
+const REMOVED_MOVIE_IDS = new Set([823482, 49021]);
 
 function escapeXml(value: string) {
   return value
@@ -43,6 +44,7 @@ export const Route = createFileRoute("/sitemap-movies[.]xml")({
             if (
               typeof movie?.id === "number" &&
               movie.id > 0 &&
+              !REMOVED_MOVIE_IDS.has(movie.id) &&
               releaseDate >= MIN_RELEASE_DATE
             ) {
               movieIds.add(movie.id);

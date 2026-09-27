@@ -1,9 +1,9 @@
 Publish exactly 3 Cimaly Best Method HD bilingual carousel posts NOW via Buffer shareNow.
-Film: Motor City — EN+AR same post.
-Series: Outer Banks — Final Season — EN+AR same post.
-Anime: That Time I Got Reincarnated as a Slime — EN+AR same post.
-Build/overwrite the 6 final assets in public/social/cimaly-2026-08-27-1900-hd at 1080x1350 JPEG quality 95 using the updated Best Method HD workflow.
-Anime must use the public reference poster as base so the original characters remain recognizable; add Cimaly branding only.
-Verify all 6 public JPG URLs before Buffer. No Cloudinary. No Supabase.
+Film: Why Did I Get Married Again? — EN+AR same post.
+Series: Reacher — EN+AR same post.
+Anime: Jujutsu Kaisen — EN+AR same post.
+Generate/overwrite 6 original Cimaly-branded assets in public/social/cimaly-2026-09-27-hd at 1080x1350 JPEG quality 96.
+Do not download or reuse official posters. Do not use Cloudinary. Do not use Supabase.
+Verify all 6 public JPG URLs before Buffer.
 Publish immediately; do not use customScheduled or dueAt.
-Manual retrigger requested at 2026-09-05 19:22 Europe/Istanbul.
+Manual retrigger requested at 2026-09-27 04:31 Europe/Istanbul.

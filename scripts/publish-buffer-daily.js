@@ -1,11 +1,44 @@
 const BUFFER_API_URL='https://api.buffer.com';
-const IMAGE_BASE='https://raw.githubusercontent.com/drohak16/cimaly/main/public/social/cimaly-2026-08-27-1900-hd';
+const IMAGE_BASE='https://raw.githubusercontent.com/drohak16/cimaly/main/public/social/cimaly-2026-09-27-hd';
 const REQUIRED=['BUFFER_API_KEY','BUFFER_CHANNEL_ID_FACEBOOK','BUFFER_CHANNEL_ID_INSTAGRAM']; for(const k of REQUIRED)if(!process.env[k])throw new Error(`Missing required secret: ${k}`);
 const cfg={bufferApiKey:process.env.BUFFER_API_KEY,facebookChannelId:process.env.BUFFER_CHANNEL_ID_FACEBOOK,instagramChannelId:process.env.BUFFER_CHANNEL_ID_INSTAGRAM};
 const POSTS=[
-{key:'film-bilingual-hd',images:[`${IMAGE_BASE}/film-en.jpg`,`${IMAGE_BASE}/film-ar.jpg`],text:`🎬 MOTOR CITY\n\nA high-energy action thriller driven by revenge, danger and a city that never slows down.\n\n🎬 موتور سيتي\n\nفيلم أكشن وتشويق سريع الإيقاع تدفعه الرغبة في الانتقام وسط مدينة لا تهدأ.\n\n▶️ Watch now / شاهد الآن على Cimaly\nhttps://cimaly.cc\n\n#Cimaly #MotorCity #Movie #Action #Thriller #فيلم #أكشن #تشويق`},
-{key:'series-bilingual-hd',images:[`${IMAGE_BASE}/series-en.jpg`,`${IMAGE_BASE}/series-ar.jpg`],text:`📺 OUTER BANKS — FINAL SEASON\n\nOne last treasure hunt brings the crew back for adventure, danger and unfinished business.\n\n📺 أوتر بانكس — الموسم الأخير\n\nمطاردة أخيرة للكنز تعيد المجموعة إلى المغامرة والخطر والحسابات التي لم تُحسم بعد.\n\n▶️ Watch now / شاهد الآن على Cimaly\nhttps://cimaly.cc\n\n#Cimaly #OuterBanks #Series #Adventure #Drama #مسلسل #مغامرة #دراما`},
-{key:'anime-bilingual-hd',images:[`${IMAGE_BASE}/anime-en.jpg`,`${IMAGE_BASE}/anime-ar.jpg`],text:`✨ THAT TIME I GOT REINCARNATED AS A SLIME\n\nA fantasy adventure where a new life opens the door to an extraordinary world and unexpected powers.\n\n✨ تجسدت في هيئة سلايم\n\nمغامرة فانتازيا تبدأ فيها حياة جديدة داخل عالم استثنائي مليء بالقوى والمفاجآت.\n\n▶️ Watch now / شاهد الآن على Cimaly\nhttps://cimaly.cc\n\n#Cimaly #SlimeAnime #Anime #Fantasy #Adventure #انمي #فانتازيا #مغامرة`}
+{key:'film-bilingual-hd',images:[`${IMAGE_BASE}/film-en.jpg`,`${IMAGE_BASE}/film-ar.jpg`],text:`🎬 WHY DID I GET MARRIED AGAIN?
+
+Relationships, choices and old tensions return in this new chapter.
+
+🎬 WHY DID I GET MARRIED AGAIN?
+
+تعود العلاقات والاختيارات والتوترات القديمة في فصل جديد.
+
+▶️ Watch now / شاهد الآن على Cimaly
+https://cimaly.cc
+
+#Cimaly #WhyDidIGetMarriedAgain #Movie #Film #فيلم`},
+{key:'series-bilingual-hd',images:[`${IMAGE_BASE}/series-en.jpg`,`${IMAGE_BASE}/series-ar.jpg`],text:`📺 REACHER
+
+Reacher returns with hard-hitting action, investigation and danger.
+
+📺 ريتشر
+
+يعود ريتشر مع الأكشن والتحقيق والمخاطر.
+
+▶️ Watch now / شاهد الآن على Cimaly
+https://cimaly.cc
+
+#Cimaly #Reacher #Series #Action #مسلسل #اكشن`},
+{key:'anime-bilingual-hd',images:[`${IMAGE_BASE}/anime-en.jpg`,`${IMAGE_BASE}/anime-ar.jpg`],text:`✨ JUJUTSU KAISEN
+
+Dark fantasy, cursed energy and intense battles keep Jujutsu Kaisen among the most-followed anime.
+
+✨ جوجوتسو كايسن
+
+فانتازيا مظلمة وطاقة ملعونة ومعارك قوية تجعل جوجوتسو كايسن من أكثر الأنميات متابعة.
+
+▶️ Watch now / شاهد الآن على Cimaly
+https://cimaly.cc
+
+#Cimaly #JujutsuKaisen #Anime #انمي #AnimeFans`}
 ];
 async function assertImage(url){let r=await fetch(url,{method:'HEAD',redirect:'follow'});if(!r.ok)r=await fetch(url,{redirect:'follow'});if(!r.ok)throw new Error(`Required GitHub image unavailable: ${url} (${r.status})`)}
 function metadata(n){return n==='facebook'?'metadata: { facebook: { type: post } }':'metadata: { instagram: { type: post shouldShareToFeed: true } }'}

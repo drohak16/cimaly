@@ -2,7 +2,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { HeroSlider } from "@/components/HeroSlider";
 import { EmptyState, MediaRow, PlayIcon, Row, SkeletonRows, Top10Card } from "@/components/Cards";
 import { useLang } from "@/lib/i18n";
-import { IMG, PLACEHOLDER, useTmdb } from "@/lib/tmdb";
+import { IMG, PLACEHOLDER } from "@/lib/tmdb";
+import { homeFetch } from "@/lib/home.functions";
+import { useQuery } from "@tanstack/react-query";
 import { clearCw, removeCw, useContinueWatching } from "@/lib/storage";
 
 const HOME_URL = "https://cimaly.cc/";
@@ -29,17 +31,23 @@ function Home() {
   const { t } = useLang();
   const cw = useContinueWatching();
 
-  const trend = useTmdb("/trending/movie/day");
-  const trendW = useTmdb("/trending/movie/week");
-  const popM = useTmdb("/movie/popular");
-  const popTv = useTmdb("/tv/popular");
-  const nowP = useTmdb("/movie/now_playing");
-  const topM = useTmdb("/movie/top_rated");
-  const topTv = useTmdb("/tv/top_rated");
-  const upc = useTmdb("/movie/upcoming");
-  const tr = useTmdb("/discover/tv", { with_origin_country: "TR", sort_by: "popularity.desc" });
-  const kr = useTmdb("/discover/tv", { with_origin_country: "KR", sort_by: "popularity.desc" });
-  const trendTv = useTmdb("/trending/tv/day");
+  const home = useQuery({
+    queryKey: ["home-data"],
+    queryFn: () => homeFetch(),
+    staleTime: 30 * 60 * 1000,
+  });
+  const d = home.data?.data ?? {};
+  const trend = { data: d.trend, isLoading: home.isLoading };
+  const trendW = { data: d.trendW };
+  const popM = { data: d.popM };
+  const popTv = { data: d.popTv };
+  const nowP = { data: d.nowP };
+  const topM = { data: d.topM };
+  const topTv = { data: d.topTv };
+  const upc = { data: d.upc };
+  const tr = { data: d.tr };
+  const kr = { data: d.kr };
+  const trendTv = { data: d.trendTv };
 
   if (trend.isLoading)
     return (

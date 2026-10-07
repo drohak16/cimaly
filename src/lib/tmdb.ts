@@ -54,7 +54,10 @@ export function useTmdb(path: string | null, params: TmdbParams = {}, localized 
     queryKey: ["tmdb", path, params, lang, localized],
     enabled: !!path,
     queryFn: () => (localized ? tmdbLocalized(path!, params, lang) : tmdb(path!, params, lang)),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 }
 

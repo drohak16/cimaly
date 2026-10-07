@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { IMG, PLACEHOLDER, fdate, img, rating, useTmdb, yr } from "@/lib/tmdb";
+import { IMG, PLACEHOLDER, fdate, img, rating, yr } from "@/lib/tmdb";
 import { useLang } from "@/lib/i18n";
 import { EmptyState, MediaRow, PlayIcon, SkeletonRows } from "./Cards";
 import { SeasonExplorer } from "./SeasonExplorer";
@@ -16,12 +16,11 @@ export function DetailPage({
 }) {
   const { t, lang } = useLang();
   const list = useMyList();
-  const { data: fetchedData, isLoading } = useTmdb(
-    `/${type}/${id}`,
-    { append_to_response: "credits,videos,external_ids,recommendations,similar" },
-    true,
-  );
-  const data = fetchedData || initialData;
+  // Detail routes already load the complete TMDB payload server-side.
+  // Reuse it on the client instead of immediately invoking the Cloudflare
+  // server function a second time for the same title.
+  const data = initialData;
+  const isLoading = false;
 
   if (!data && isLoading)
     return (

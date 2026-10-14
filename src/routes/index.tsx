@@ -33,7 +33,19 @@ function Home() {
 
   const home = useQuery({
     queryKey: ["home-data"],
-    queryFn: () => homeFetch(),
+    queryFn: async () => {
+      // Static Pages asset avoids a Worker invocation when daily snapshots exist.
+      try {
+        const response = await fetch("/data/home.json", { cache: "no-cache" });
+        if (response.ok) {
+          const snapshot = await response.json();
+          if (snapshot?.ok && snapshot?.data?.trend?.results) return snapshot;
+        }
+      } catch {
+        // Preview deployments without generated assets retain the current backend.
+      }
+      return homeFetch();
+    },
     staleTime: 30 * 60 * 1000,
   });
   const d = home.data?.data ?? {};

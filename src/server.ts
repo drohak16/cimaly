@@ -49,7 +49,26 @@ export default {
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      return await normalizeCatastrophicSsrResponse(response);
+      const normalized = await normalizeCatastrophicSsrResponse(response);
+      // Only cache successful, public, anonymous HTML detail pages.
+      // A CDN rule must explicitly respect this header for edge caching.
+      const url = new URL(request.url);
+      const isDetail = /^\/(movie|tv)\/\d+\/?$/.test(url.pathname);
+      const contentType = normalized.headers.get("content-type") ?? "";
+      if (
+        request.method === "GET" &&
+        isDetail &&
+        normalized.status === 200 &&
+        contentType.includes("text/html") &&
+        !request.headers.has("authorization") &&
+        !request.headers.has("cookie") &&
+        !normalized.headers.has("set-cookie")
+      ) {
+        const headers = new Headers(normalized.headers);
+        headers.set("Cache-Control", "public, max-age=0, s-maxage=3600, stale-while-revalidate=86400");
+        return new Response(normalized.body, { status: normalized.status, headers });
+      }
+      return normalized;
     } catch (error) {
       console.error(error);
       return new Response(renderErrorPage(), {

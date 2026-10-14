@@ -5,6 +5,7 @@
   ],
   "exclude": [
     "/assets/*",
+    "/data/*",
     "/robots.txt",
     "/sitemap.xml"
   ]

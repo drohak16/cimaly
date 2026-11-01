@@ -25,14 +25,19 @@ const results=[];
 // Check the actual HTML links, not merely client-side JSON hydration data.
 const home=await get("/");
 const mediaLinks=new Set(
-  [...home.html.matchAll(/<a\\b[^>]*href=["']\\/(?:movie|tv)\\/([0-9]+)(?:["'?#])/gi)]
-    .map((match) => match[0].match(/href=["']([^"']+)/)?.[1])
-    .filter(Boolean)
+  [...home.html.matchAll(/href=["']([^"']+)["']/g)]
+    .map((match) => match[1])
+    .filter((href) => {
+      const parts = href.split("/");
+      return parts.length === 3 &&
+        (parts[1] === "movie" || parts[1] === "tv") &&
+        /^[0-9]+$/.test(parts[2]);
+    })
 );
 const homeErrors=[];
 if(home.status!==200) homeErrors.push("HTTP "+home.status);
 if(mediaLinks.size<15) homeErrors.push("Too few SSR film/TV links: "+mediaLinks.size);
-if(!/<h1[^>]*>Cimaly[^<]*<\\/h1>/i.test(home.html)) homeErrors.push("Missing SSR H1");
+if(!home.html.includes('<h1 class="sr-only">Cimaly')) homeErrors.push("Missing SSR H1");
 if(!home.html.includes('https://cimaly.cc/')) homeErrors.push("Missing canonical host");
 results.push({path:"/",http:home.status,urls:mediaLinks.size,errors:homeErrors});
 

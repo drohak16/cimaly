@@ -48,9 +48,12 @@ export function BrowsePage({
   if (sort === "vote_average.desc") q["vote_count.gte"] = 200;
   if (search.year) q[isTv ? "first_air_date_year" : "primary_release_year"] = search.year;
 
-  const query = useTmdb(`/discover/${type}`, q);
-  const data = query.data ?? initialData;
-  const isLoading = query.isLoading && !initialData;
+  const isDefaultBrowse = Object.keys(search).length === 0;
+  const defaultData = isDefaultBrowse ? initialData : undefined;
+  const query = useTmdb(`/discover/${type}`, q, false, lang === "en" ? defaultData : undefined);
+  // Never show unfiltered SSR results on a filtered/paginated route.
+  const data = query.data ?? defaultData;
+  const isLoading = query.isLoading && !data;
 
   const go = (patch: BrowseSearch) => {
     const next: BrowseSearch = { ...search, ...patch };

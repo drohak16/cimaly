@@ -22,6 +22,20 @@ async function get(path) {
   }
 }
 const results=[];
+// Check the actual HTML links, not merely client-side JSON hydration data.
+const home=await get("/");
+const mediaLinks=new Set(
+  [...home.html.matchAll(/<a\\b[^>]*href=["']\\/(?:movie|tv)\\/([0-9]+)(?:["'?#])/gi)]
+    .map((match) => match[0].match(/href=["']([^"']+)/)?.[1])
+    .filter(Boolean)
+);
+const homeErrors=[];
+if(home.status!==200) homeErrors.push("HTTP "+home.status);
+if(mediaLinks.size<15) homeErrors.push("Too few SSR film/TV links: "+mediaLinks.size);
+if(!/<h1[^>]*>Cimaly[^<]*<\\/h1>/i.test(home.html)) homeErrors.push("Missing SSR H1");
+if(!home.html.includes('https://cimaly.cc/')) homeErrors.push("Missing canonical host");
+results.push({path:"/",http:home.status,urls:mediaLinks.size,errors:homeErrors});
+
 for (const item of routes) {
   const {status,html}=await get(item.path);
   const head=html.split("</head>")[0] || "";

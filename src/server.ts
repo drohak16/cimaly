@@ -46,6 +46,14 @@ function isH3SwallowedErrorBody(body: string): boolean {
 
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
+    // Dynamic HTML must have a single canonical host to avoid duplicate crawl URLs.
+    // Keep the original path and search parameters intact.
+    const url = new URL(request.url);
+    if (url.hostname.toLowerCase() === "www.cimaly.cc") {
+      url.hostname = "cimaly.cc";
+      url.protocol = "https:";
+      return Response.redirect(url.toString(), 308);
+    }
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);

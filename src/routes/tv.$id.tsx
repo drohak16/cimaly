@@ -1,6 +1,7 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { DetailPage } from "@/components/DetailPage";
 import { IMG, tmdb } from "@/lib/tmdb";
+import { jsonLd } from "@/lib/seo";
 
 const REMOVED_TV_IDS = new Set(["103815", "114655"]);
 
@@ -45,6 +46,21 @@ export const Route = createFileRoute("/tv/$id")({
     const description = isCurrentlyPopular ? arabicDescription : standardDescription;
     const image = show?.poster_path ? `${IMG}w780${show.poster_path}` : undefined;
     const canonical = `https://cimaly.cc/tv/${params.id}`;
+    const structuredData = {
+      "@context": "https://schema.org",
+      "@type": "TVSeries",
+      name: showTitle,
+      url: canonical,
+      ...(originalTitle ? { alternateName: originalTitle } : {}),
+      ...(overview ? { description: overview } : {}),
+      ...(image ? { image } : {}),
+      ...(show?.first_air_date ? { startDate: show.first_air_date } : {}),
+      ...(show?.original_language ? { inLanguage: show.original_language } : {}),
+      ...(show?.genres?.length ? { genre: show.genres.map((g: { name: string }) => g.name).filter(Boolean) } : {}),
+      ...(show?.number_of_seasons > 0 ? { numberOfSeasons: show.number_of_seasons } : {}),
+      ...(show?.number_of_episodes > 0 ? { numberOfEpisodes: show.number_of_episodes } : {}),
+      ...(show?.credits?.cast?.length ? { actor: show.credits.cast.slice(0, 5).filter((c: { name?: string }) => c.name).map((c: { name: string }) => ({ "@type": "Person", name: c.name })) } : {}),
+    };
     return { meta: [
       { title }, { name: "description", content: description.slice(0, 160) },
       { property: "og:title", content: title }, { property: "og:description", content: description.slice(0, 160) },
@@ -52,7 +68,7 @@ export const Route = createFileRoute("/tv/$id")({
       ...(image ? [{ property: "og:image", content: image }] : []),
       { name: "twitter:card", content: "summary_large_image" }, { name: "twitter:title", content: title },
       { name: "twitter:description", content: description.slice(0, 160) }, ...(image ? [{ name: "twitter:image", content: image }] : []),
-    ], links: [{ rel: "canonical", href: canonical }] };
+    ], links: [{ rel: "canonical", href: canonical }], scripts: show?.id ? [{ type: "application/ld+json", children: jsonLd(structuredData) }] : [] };
   },
   component: TvDetailPage,
 });

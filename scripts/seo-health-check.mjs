@@ -56,10 +56,28 @@ async function probe(target) {
     const wrongRedirect = target.group === "www-redirect" &&
       !response.url.startsWith("https://cimaly.cc/");
     const status = fallback500 && response.ok ? 500 : response.status;
+    // Check actual crawlable HTML anchors, not only loader data inside scripts.
+    // Reuse the homepage response already fetched: zero extra HTTP requests.
+    const mediaLinks = target.url === BASE + "/"
+      ? new Set(
+          [...html.matchAll(/href=["']([^"']+)["']/g)]
+            .map((m) => m[1])
+            .filter((href) => {
+              const parts = href.split("/");
+              return parts.length === 3 &&
+                (parts[1] === "movie" || parts[1] === "tv") &&
+                /^[0-9]+$/.test(parts[2]);
+            }),
+        ).size
+      : null;
+    const emptyHome = mediaLinks !== null && mediaLinks < 15;
     return {
       ...target, status, finalUrl: response.url,
       milliseconds: Date.now() - startedAt,
-      error: wrongRedirect ? "www canonical redirect missing" : fallback500 ? "SSR fallback error page" : null,
+      mediaLinks,
+      error: wrongRedirect ? "www canonical redirect missing"
+        : fallback500 ? "SSR fallback error page"
+        : emptyHome ? "Homepage SSR has fewer than 15 media links" : null,
     };
   } catch (error) {
     return {
@@ -96,7 +114,7 @@ const summary = [
   "|---|---:|---|",
   ...results.map((r) => {
     const path = r.url.replace(BASE, "");
-    return "| " + path + " | " + (r.status ?? "error") + " | " + (r.error ?? "") + " |";
+    return "| " + path + " | " + (r.status ?? "error") + " | " + (r.error ?? (r.mediaLinks !== null && r.mediaLinks !== undefined ? "SSR media links: " + r.mediaLinks : "")) + " |";
   }),
   "",
   "The original GSC 5xx report is historical; a 200 now doesn't guarantee that Google has reindexed the page.",

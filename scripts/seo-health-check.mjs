@@ -34,10 +34,18 @@ const old5xx = [
 ];
 const targets = [
   { url: BASE + "/", group: "core" },
-  { url: BASE + "/robots.txt", group: "core" },
-  { url: BASE + "/sitemap.xml", group: "core" },
-  { url: BASE + "/sitemap-pages.xml", group: "core" },
-  { url: BASE + "/genre/documentary", group: "former-soft-404" },
+  { url: BASE + "/robots.txt", group: "robots" },
+  { url: BASE + "/sitemap.xml", group: "sitemap-index" },
+  { url: BASE + "/sitemap-pages.xml", group: "sitemap-pages" },
+  { url: BASE + "/sitemap-movies.xml", group: "sitemap-detail" },
+  { url: BASE + "/sitemap-tv.xml", group: "sitemap-detail" },
+  { url: BASE + "/sitemap-anime.xml", group: "sitemap-detail" },
+  { url: BASE + "/movies", group: "listing" },
+  { url: BASE + "/tv", group: "listing" },
+  { url: BASE + "/genre/documentary", group: "listing" },
+  { url: BASE + "/country/tr", group: "listing" },
+  { url: BASE + "/movie/9569", group: "movie-detail" },
+  { url: BASE + "/tv/648", group: "tv-detail" },
   ...old5xx.map((p) => ({ url: BASE + p, group: "previous-5xx" })),
   { url: "https://www.cimaly.cc/", group: "www-redirect" },
 ];
@@ -71,13 +79,41 @@ async function probe(target) {
         ).size
       : null;
     const emptyHome = mediaLinks !== null && mediaLinks < 15;
+    const group = target.group;
+    const head = html.split("</head>")[0] ?? "";
+    const declaredCanonical = head.match(/<link[^>]*rel=["']canonical["'][^>]*href=["']([^"']+)/i)?.[1] ??
+      head.match(/<link[^>]*href=["']([^"']+)["'][^>]*rel=["']canonical["']/i)?.[1] ?? "";
+    const robotsNoindex = /<meta[^>]*name=["']robots["'][^>]*content=["'][^"']*noindex|<meta[^>]*content=["'][^"']*noindex[^>]*name=["']robots/i.test(head);
+    const checkCanonical = ["core", "listing", "movie-detail", "tv-detail"].includes(group);
+    const seoPath = new URL(target.url).pathname;
+    const expectedCanonical = BASE + seoPath;
+    const invalidCanonical = checkCanonical && declaredCanonical !== expectedCanonical;
+    const invalidRobots = checkCanonical && robotsNoindex;
+    const invalidDetail = group === "movie-detail" || group === "tv-detail"
+      ? !head.includes("application/ld+json") ||
+        !head.includes(group === "movie-detail" ? '"Movie"' : '"TVSeries"')
+      : false;
+    const invalidSitemap = group.startsWith("sitemap-")
+      ? !html.includes(group === "sitemap-index" ? "<sitemapindex" : "<urlset") ||
+        (html.match(/<loc>/g) ?? []).length < (group === "sitemap-index" ? 4 : 10) ||
+        !html.includes(BASE + "/")
+      : false;
+    const invalidRobotsTxt = group === "robots" && !html.includes("Sitemap: " + BASE + "/sitemap.xml");
+    const noListing = group === "listing" && !/<h1\b/i.test(html);
+    const contentError = invalidCanonical ? "Canonical mismatch: " + (declaredCanonical || "missing")
+      : invalidRobots ? "Unexpected noindex"
+      : invalidDetail ? "Missing Movie/TVSeries JSON-LD"
+      : invalidSitemap ? "Sitemap invalid or missing URLs"
+      : invalidRobotsTxt ? "robots.txt sitemap directive missing"
+      : noListing ? "Listing page has no H1" : null;
     return {
       ...target, status, finalUrl: response.url,
       milliseconds: Date.now() - startedAt,
       mediaLinks,
       error: wrongRedirect ? "www canonical redirect missing"
         : fallback500 ? "SSR fallback error page"
-        : emptyHome ? "Homepage SSR has fewer than 15 media links" : null,
+        : emptyHome ? "Homepage SSR has fewer than 15 media links"
+        : contentError,
     };
   } catch (error) {
     return {
@@ -106,7 +142,7 @@ await writeFile("seo-health-result.json", JSON.stringify(run, null, 2) + "\n");
 const summary = [
   "## Cimaly SEO health — " + run.timestamp,
   "",
-  "Checked: **" + run.count + "** public URLs (27 previously flagged 5xx).",
+  "Checked: **" + run.count + "** public URLs, including 27 historical 5xx routes and SEO metadata.",
   "Critical (5xx / timeout / redirect): **" + run.critical + "**.",
   "HTTP 404 (requires individual verification): **" + run.http404 + "**.",
   "",

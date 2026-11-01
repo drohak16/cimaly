@@ -130,7 +130,7 @@ export function DetailPage({
                   {lang === "ar" ? "معلومات العمل مأخوذة من قاعدة بيانات TMDB." : "Title information is sourced from TMDB."}
                 </p>
               </div>
-            )
+            )}
             <dl className="facts">
               {director && (
                 <div>

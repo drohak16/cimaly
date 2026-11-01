@@ -35,8 +35,12 @@ export const Route = createFileRoute("/sitemap-movies[.]xml")({
             },
           });
 
-          if (!result.ok || !result.data?.results) {
-            continue;
+          if (!result.ok || !Array.isArray(result.data?.results)) {
+            // Never advertise an empty/partial sitemap as valid during an API outage.
+            return new Response("Sitemap temporarily unavailable", {
+              status: 503,
+              headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },
+            });
           }
 
           for (const movie of result.data.results) {

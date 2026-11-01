@@ -8,6 +8,7 @@ export const Route = createFileRoute("/search")({
   head: () => ({
     meta: [
       { title: "Search — Cimaly" },
+      { name: "robots", content: "noindex, follow" },
       { name: "description", content: "Search movies and TV shows across Cimaly in English and Arabic." },
       { property: "og:title", content: "Search — Cimaly" },
       { property: "og:description", content: "Search movies and TV shows in English and Arabic." },

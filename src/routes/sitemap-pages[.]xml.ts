@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { GENRES, COUNTRIES } from "@/lib/catalog";
 
 const BASE_URL = "https://cimaly.cc";
 
@@ -10,8 +11,8 @@ export const Route = createFileRoute("/sitemap-pages.xml")({
           `${BASE_URL}/`,
           `${BASE_URL}/movies`,
           `${BASE_URL}/tv`,
-          `${BASE_URL}/movie/1284041`,
-          `${BASE_URL}/tv/125988`,
+          ...GENRES.map((genre) => `${BASE_URL}/genre/${genre.slug}`),
+          ...COUNTRIES.map((country) => `${BASE_URL}/country/${country.c}`),
         ];
 
         const xml = `<?xml version="1.0" encoding="UTF-8"?>

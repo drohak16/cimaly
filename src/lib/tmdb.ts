@@ -34,7 +34,12 @@ export async function tmdb(path: string, params: TmdbParams = {}, lang = "en"): 
   const res = await tmdbFetch({
     data: { path, params: { language: lang === "ar" ? "ar-SA" : "en-US", ...params } },
   });
-  if (!res.ok) return res.missingKey ? { __missingKey: true } : null;
+  if (!res.ok) {
+    // Only an actual upstream 404 means the title is missing. Do not turn
+    // TMDB outages, rate limits or missing credentials into permanent 404s.
+    if (res.status === 404) return null;
+    return { __unavailable: true, ...(res.missingKey ? { __missingKey: true } : {}) };
+  }
   return res.data;
 }
 

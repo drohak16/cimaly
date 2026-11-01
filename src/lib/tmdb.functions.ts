@@ -6,7 +6,7 @@ const schema = z.object({
   params: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
 });
 
-export type TmdbResult = { ok: boolean; missingKey?: boolean; data?: any };
+export type TmdbResult = { ok: boolean; missingKey?: boolean; status?: number; data?: any };
 
 export const tmdbFetch = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => schema.parse(d))
@@ -17,7 +17,7 @@ export const tmdbFetch = createServerFn({ method: "POST" })
     for (const [k, v] of Object.entries(data.params ?? {})) q.set(k, String(v));
     try {
       const res = await fetch(`https://api.themoviedb.org/3${data.path}?${q.toString()}`);
-      if (!res.ok) return { ok: false };
+      if (!res.ok) return { ok: false, status: res.status };
       return { ok: true, data: await res.json() };
     } catch {
       return { ok: false };

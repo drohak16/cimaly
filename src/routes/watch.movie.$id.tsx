@@ -9,7 +9,8 @@ export const Route = createFileRoute("/watch/movie/$id")({
   loader: async ({ params }) => {
     if (!/^\d+$/.test(params.id) || REMOVED_MOVIE_IDS.has(params.id)) throw notFound();
     const movie = await tmdb(`/movie/${params.id}`, { append_to_response: "external_ids" }, "en");
-    if (!movie || movie.__missingKey || !movie.id) throw notFound();
+    if (movie?.__unavailable) throw new Error("TMDB temporarily unavailable");
+    if (!movie || !movie.id) throw notFound();
     return { id: params.id, movie };
   },
   head: ({ loaderData }) => {

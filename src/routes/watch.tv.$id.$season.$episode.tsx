@@ -14,7 +14,8 @@ export const Route = createFileRoute("/watch/tv/$id/$season/$episode")({
       tmdb(`/tv/${params.id}`, { append_to_response: "external_ids" }, "en"),
       tmdb(`/tv/${params.id}/season/${season}`, {}, "en"),
     ]);
-    if (!show || show.__missingKey || !show.id || !seasonData || seasonData.__missingKey) throw notFound();
+    if (show?.__unavailable || seasonData?.__unavailable) throw new Error("TMDB temporarily unavailable");
+    if (!show || !show.id || !seasonData) throw notFound();
     const episodeData = seasonData?.episodes?.find((item: any) => item.episode_number === episode) || null;
     if (!episodeData || episodeData.__missingKey) throw notFound();
     return { id: params.id, season, episode, show, episodeData };

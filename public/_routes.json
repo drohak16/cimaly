@@ -6,6 +6,7 @@
   "exclude": [
     "/assets/*",
     "/robots.txt",
-    "/sitemap.xml"
+    "/sitemap.xml",
+    "/sitemap-pages.xml"
   ]
 }

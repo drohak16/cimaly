@@ -10,6 +10,9 @@ import { clearCw, removeCw, useContinueWatching } from "@/lib/storage";
 const HOME_URL = "https://cimaly.cc/";
 
 export const Route = createFileRoute("/")({
+  // SSR catalogue: search crawlers see actual films and series in the initial HTML.
+  // The same payload hydrates React Query, avoiding a duplicate client request.
+  loader: async () => ({ initialData: await homeFetch() }),
   head: () => ({
     meta: [
       { title: "Cimaly — Movies & TV Shows" },
@@ -29,15 +32,24 @@ export const Route = createFileRoute("/")({
 
 function Home() {
   const { t } = useLang();
+  const { initialData } = Route.useLoaderData();
   const cw = useContinueWatching();
 
   const home = useQuery({
     queryKey: ["home-data"],
     queryFn: () => homeFetch(),
+    // Reuse what the server rendered, instead of fetching the catalogue twice.
+    ...(initialData?.ok ? { initialData } : {}),
     staleTime: 30 * 60 * 1000,
   });
   const d = home.data?.data ?? {};
-  const trend = { data: d.trend, isLoading: home.isLoading };
+  // A single TMDB trending feed outage should not blank an otherwise healthy homepage.
+  const primary = d.trend?.results?.length ? d.trend
+    : d.popM?.results?.length ? d.popM
+    : d.nowP?.results?.length ? d.nowP
+    : d.trendW?.results?.length ? d.trendW
+    : undefined;
+  const trend = { data: primary, isLoading: home.isLoading };
   const trendW = { data: d.trendW };
   const popM = { data: d.popM };
   const popTv = { data: d.popTv };
@@ -70,6 +82,7 @@ function Home() {
 
   return (
     <>
+      <h1 className="sr-only">Cimaly — trending movies, TV shows and anime</h1>
       <HeroSlider items={heroSlides} />
 
       {cw.length > 0 && (

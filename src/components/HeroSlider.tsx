@@ -31,7 +31,7 @@ export function HeroSlider({ items }: { items: Media[] }) {
           <div className="hero-grad2" />
           <div className="hero-content">
             <div className="hero-in">
-              <h1 className="hero-title">{m.title || m.name}</h1>
+              <h2 className="hero-title">{m.title || m.name}</h2>
               <div className="hero-meta">
                 {genreOf(m.genre_ids).map((g, gi) => (
                   <span key={g} style={{ display: "contents" }}>

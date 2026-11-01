@@ -1,0 +1,25 @@
+name: Cimaly indexed-content diagnostic
+on:
+  push:
+    paths:
+      - scripts/seo-unindexed-audit.mjs
+      - .github/workflows/seo-unindexed-audit.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diagnostics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit 50 GSC crawled-not-indexed detail URLs
+        run: node scripts/seo-unindexed-audit.mjs
+      - name: Save audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seo-unindexed-sample
+          path: seo-unindexed-audit.json
+          retention-days: 14
+          if-no-files-found: ignore

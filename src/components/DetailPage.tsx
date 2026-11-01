@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { IMG, PLACEHOLDER, fdate, img, rating, yr } from "@/lib/tmdb";
+import { COUNTRIES, GENRES } from "@/lib/catalog";
 import { useLang } from "@/lib/i18n";
 import { EmptyState, MediaRow, PlayIcon, SkeletonRows } from "./Cards";
 import { SeasonExplorer } from "./SeasonExplorer";
@@ -41,6 +42,9 @@ export function DetailPage({
 
   const isTv = type === "tv";
   const title = data.title || data.name || "";
+  const countryCode = String(data.production_countries?.[0]?.iso_3166_1 || data.origin_country?.[0] || "").toLowerCase();
+  const country = COUNTRIES.find((item) => item.c === countryCode);
+  const countryName = data.production_countries?.[0]?.name || country?.en;
   const orig = data.original_title || data.original_name;
   const director = (data.credits?.crew || []).find((c: any) => c.job === "Director");
   const trailerV = (data.videos?.results || []).find((v: any) => v.site === "YouTube" && v.type === "Trailer");
@@ -51,6 +55,13 @@ export function DetailPage({
 
   return (
     <>
+      <nav aria-label="Breadcrumb" className="wrap flex flex-wrap items-center gap-2 py-3 text-xs text-muted-foreground">
+        <Link to="/" className="hover:underline">{t("home")}</Link>
+        <span aria-hidden="true">/</span>
+        <Link to={isTv ? "/tv" : "/movies"} className="hover:underline">{isTv ? t("tv") : t("movies")}</Link>
+        <span aria-hidden="true">/</span>
+        <span aria-current="page">{title}</span>
+      </nav>
       <div className="detail-hero fade">
         <div className="detail-bg">
           {data.backdrop_path && <img src={IMG + "original" + data.backdrop_path} alt="" />}
@@ -87,15 +98,24 @@ export function DetailPage({
                   </span>
                 </>
               )}
-              {data.production_countries?.[0] && <span>{data.production_countries[0].name}</span>}
+              {country ? (
+                <Link to="/country/$code" params={{ code: country.c }} className="hover:underline">
+                  {lang === "ar" ? country.ar : (countryName || country.en)}
+                </Link>
+              ) : countryName ? <span>{countryName}</span> : null}
               <span>{(data.original_language || "").toUpperCase()}</span>
             </div>
             <div className="genre-pills">
-              {(data.genres || []).map((g: any) => (
-                <span className="pill" key={g.id}>
-                  {g.name}
-                </span>
-              ))}
+              {(data.genres || []).map((g: any) => {
+                const match = GENRES.find((item) => (isTv ? item.tv : item.id) === g.id);
+                return match ? (
+                  <Link to="/genre/$slug" params={{ slug: match.slug }} className="pill" key={g.id}>
+                    {g.name}
+                  </Link>
+                ) : (
+                  <span className="pill" key={g.id}>{g.name}</span>
+                );
+              })}
             </div>
             {data.overview && <p className="detail-ov">{data.overview}</p>}
             <dl className="facts">

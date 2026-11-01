@@ -1,0 +1,17 @@
+name: Cimaly SEO release smoke
+on:
+  push:
+    paths:
+      - "scripts/seo-release-smoke.mjs"
+      - ".github/workflows/seo-release-smoke.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify deployed metadata and sitemap XML
+        run: node scripts/seo-release-smoke.mjs

@@ -1,0 +1,25 @@
+name: Cimaly sample historic 404 audit
+on:
+  push:
+    paths:
+      - "scripts/seo-404-audit.mjs"
+      - ".github/workflows/seo-404-audit.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  sample:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check 104 historic Google Search Console URLs
+        run: node scripts/seo-404-audit.mjs
+      - name: Save audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seo-404-sample
+          path: seo-404-audit.json
+          if-no-files-found: ignore
+          retention-days: 14

@@ -53,12 +53,14 @@ export async function tmdbLocalized(path: string, params: TmdbParams = {}, lang 
   return data;
 }
 
-export function useTmdb(path: string | null, params: TmdbParams = {}, localized = false) {
+export function useTmdb(path: string | null, params: TmdbParams = {}, localized = false, initialData?: any) {
   const { lang } = useLang();
   return useQuery({
     queryKey: ["tmdb", path, params, lang, localized],
     enabled: !!path,
     queryFn: () => (localized ? tmdbLocalized(path!, params, lang) : tmdb(path!, params, lang)),
+    // Hydrate SSR category listings instead of making the browser request them twice.
+    ...(initialData ? { initialData } : {}),
     staleTime: 30 * 60 * 1000,
     gcTime: 60 * 60 * 1000,
     refetchOnWindowFocus: false,

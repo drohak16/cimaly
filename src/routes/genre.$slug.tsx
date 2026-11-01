@@ -2,13 +2,23 @@ import { createFileRoute, notFound } from "@tanstack/react-router";
 import { EmptyState, MediaCard, MediaRow, SkeletonRows } from "@/components/Cards";
 import { GENRES } from "@/lib/catalog";
 import { gname, useLang } from "@/lib/i18n";
-import { useTmdb } from "@/lib/tmdb";
+import { tmdb, useTmdb } from "@/lib/tmdb";
 
 export const Route = createFileRoute("/genre/$slug")({
   beforeLoad: ({ params }) => {
     if (!GENRES.some((genre) => genre.slug === params.slug)) {
       throw notFound();
     }
+  },
+  loader: async ({ params }) => {
+    const g = GENRES.find((item) => item.slug === params.slug);
+    if (!g) throw notFound();
+    const [tv, movie] = await Promise.all([
+      tmdb("/discover/tv", { with_genres: g.tv ?? 0, sort_by: "popularity.desc" }, "en"),
+      tmdb("/discover/movie", { with_genres: g.id ?? 0, sort_by: "popularity.desc" }, "en"),
+    ]);
+    if (tv?.__unavailable && movie?.__unavailable) throw new Error("TMDB temporarily unavailable");
+    return { tv, movie };
   },
   head: ({ params }) => {
     const genreName = params.slug
@@ -35,15 +45,17 @@ export const Route = createFileRoute("/genre/$slug")({
 function GenrePage() {
   const { slug } = Route.useParams();
   const { t, lang } = useLang();
+  const { tv: initialTv, movie: initialMovie } = Route.useLoaderData();
   const g = GENRES.find((x) => x.slug === slug)!;
-  const tvD = useTmdb("/discover/tv", { with_genres: g.tv ?? 0, sort_by: "popularity.desc" });
-  const mvD = useTmdb("/discover/movie", { with_genres: g.id ?? 0, sort_by: "popularity.desc" });
+  const tvD = useTmdb("/discover/tv", { with_genres: g.tv ?? 0, sort_by: "popularity.desc" }, false, lang === "en" && initialTv?.results ? initialTv : undefined);
+  const mvD = useTmdb("/discover/movie", { with_genres: g.id ?? 0, sort_by: "popularity.desc" }, false, lang === "en" && initialMovie?.results ? initialMovie : undefined);
   const name = gname(g, lang);
 
   return (
     <>
       <div className="page wrap">
         <h1 className="page-title">{name}</h1>
+        <p className="text-muted-foreground">Explore popular {g.en.toLowerCase()} movies and TV shows, including recent releases and highly rated titles.</p>
       </div>
       {tvD.isLoading || mvD.isLoading ? (
         <SkeletonRows count={2} />

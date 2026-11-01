@@ -23,22 +23,31 @@ export const Route = createFileRoute("/sitemap-anime.xml")({
       GET: async () => {
         const animeIds = new Set<number>();
 
-        for (let page = 1; page <= TMDB_PAGES; page++) {
+        // Five calls per sitemap: three popularity pages plus two 2025+ pages.
+        // Do not remove older catalogue titles; they remain browsable.
+        for (let slot = 1; slot <= TMDB_PAGES; slot++) {
+          const recent = slot > 3;
+          const page = recent ? slot - 3 : slot;
+          const today = new Date().toISOString().slice(0, 10);
           const result = await tmdbFetch({
             data: {
               path: "/discover/tv",
               params: {
                 page,
-                sort_by: "popularity.desc",
+                sort_by: recent ? "first_air_date.desc" : "popularity.desc",
                 include_adult: false,
                 with_genres: "16",
                 with_origin_country: "JP",
+                ...(recent ? { "first_air_date.gte": "2025-01-01", "first_air_date.lte": today, "vote_count.gte": 5 } : {}),
               },
             },
           });
 
-          if (!result.ok || !result.data?.results) {
-            continue;
+          if (!result.ok || !Array.isArray(result.data?.results)) {
+            return new Response("Sitemap temporarily unavailable", {
+              status: 503,
+              headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },
+            });
           }
 
           for (const anime of result.data.results) {

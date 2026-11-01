@@ -117,7 +117,20 @@ export function DetailPage({
                 );
               })}
             </div>
-            {data.overview && <p className="detail-ov">{data.overview}</p>}
+            {data.overview ? (
+              <p className="detail-ov">{data.overview}</p>
+            ) : (
+              <div className="detail-ov">
+                <p>
+                  {title}{yr(data.release_date || data.first_air_date) ? ` (${yr(data.release_date || data.first_air_date)})` : ""} —
+                  {" "}{(data.genres || []).slice(0, 2).map((g: { name: string }) => g.name).filter(Boolean).join(", ") || (isTv ? t("tv") : t("movies"))}.
+                  {castList.length ? ` Cast: ${castList.slice(0, 3).map((person: { name: string }) => person.name).join(", ")}.` : ""}
+                </p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {lang === "ar" ? "معلومات العمل مأخوذة من قاعدة بيانات TMDB." : "Title information is sourced from TMDB."}
+                </p>
+              </div>
+            )
             <dl className="facts">
               {director && (
                 <div>

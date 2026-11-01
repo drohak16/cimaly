@@ -22,15 +22,21 @@ export const Route = createFileRoute("/sitemap-movies[.]xml")({
       GET: async () => {
         const movieIds = new Set<number>();
 
-        for (let page = 1; page <= TMDB_PAGES; page++) {
+        // Five calls per sitemap: three popularity pages plus two 2025+ pages.
+        // Do not remove older catalogue titles; they remain browsable.
+        for (let slot = 1; slot <= TMDB_PAGES; slot++) {
+          const recent = slot > 3;
+          const page = recent ? slot - 3 : slot;
+          const today = new Date().toISOString().slice(0, 10);
           const result = await tmdbFetch({
             data: {
               path: "/discover/movie",
               params: {
                 page,
-                sort_by: "popularity.desc",
+                sort_by: recent ? "primary_release_date.desc" : "popularity.desc",
                 include_adult: false,
                 "primary_release_date.gte": MIN_RELEASE_DATE,
+                ...(recent ? { "primary_release_date.gte": "2025-01-01", "primary_release_date.lte": today, "vote_count.gte": 5 } : {}),
               },
             },
           });

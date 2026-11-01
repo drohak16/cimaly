@@ -1,0 +1,29 @@
+name: Cimaly SEO health
+on:
+  push:
+    paths:
+      - "scripts/seo-health-check.mjs"
+      - ".github/workflows/seo-health.yml"
+  schedule:
+    - cron: "20 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check previously reported Search Console 5xx URLs
+        run: node scripts/seo-health-check.mjs
+      - name: Save check results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cimaly-seo-health
+          path: seo-health-result.json
+          if-no-files-found: ignore
+          retention-days: 14

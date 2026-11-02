@@ -109,6 +109,11 @@ export function Row({
   );
 }
 
+// Reject clear link-spam records from upstream catalogue feeds without
+// changing legitimate movie/TV metadata or their public detail URLs.
+const isObviousLinkSpam = (item: Media) =>
+  ((item.title || item.name || "").match(/\.(?:com|net|org|xyz)\b/gi) ?? []).length >= 2;
+
 export function MediaRow({
   title,
   items,
@@ -122,10 +127,11 @@ export function MediaRow({
   link?: ReactNode;
   limit?: number;
 }) {
-  if (!items?.length) return null;
+  const visibleItems = (items ?? []).filter((it) => !isObviousLinkSpam(it)).slice(0, limit);
+  if (!visibleItems.length) return null;
   return (
     <Row title={title} link={link}>
-      {items.slice(0, limit).map((it) => (
+      {visibleItems.map((it) => (
         <div className="slide" key={`${it.id}-${it.media_type ?? type ?? ""}`}>
           <MediaCard item={it} type={type} />
         </div>

@@ -3,7 +3,7 @@ import { WatchPage } from "@/components/WatchPage";
 import { tmdb } from "@/lib/tmdb";
 
 const BASE_URL = "https://cimaly.cc";
-const REMOVED_MOVIE_IDS = new Set(["823482", "49021"]);
+const REMOVED_MOVIE_IDS = new Set(["823482", "49021", "5038"]);
 
 export const Route = createFileRoute("/watch/movie/$id")({
   loader: async ({ params }) => {

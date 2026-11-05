@@ -22,10 +22,16 @@ export type Media = {
   overview?: string;
 };
 
+const REMOVED_MOVIE_IDS = new Set([5038]);
+const REMOVED_TV_IDS = new Set([259453, 58841]);
+export const isReportedMedia = (item: Media, type?: "movie" | "tv") =>
+  (kindOf(item, type) === "tv" ? REMOVED_TV_IDS : REMOVED_MOVIE_IDS).has(item.id);
+
 export const kindOf = (item: Media, type?: "movie" | "tv") =>
   type === "tv" || item.media_type === "tv" || (!item.title && !!item.name) ? "tv" : "movie";
 
 export function MediaCard({ item, type }: { item: Media; type?: "movie" | "tv" | undefined }) {
+  if (isReportedMedia(item, type)) return null;
   const kind = kindOf(item, type);
   const title = item.title || item.name || "";
   return (
@@ -50,6 +56,7 @@ export function MediaCard({ item, type }: { item: Media; type?: "movie" | "tv" |
 }
 
 export function Top10Card({ item, index }: { item: Media; index: number }) {
+  if (isReportedMedia(item)) return null;
   const kind = kindOf(item);
   return (
     <Link
@@ -125,7 +132,7 @@ export function MediaRow({
   if (!items?.length) return null;
   return (
     <Row title={title} link={link}>
-      {items.slice(0, limit).map((it) => (
+      {items.filter((it) => !isReportedMedia(it, type)).slice(0, limit).map((it) => (
         <div className="slide" key={`${it.id}-${it.media_type ?? type ?? ""}`}>
           <MediaCard item={it} type={type} />
         </div>

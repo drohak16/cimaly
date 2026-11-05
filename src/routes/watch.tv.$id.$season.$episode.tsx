@@ -3,10 +3,11 @@ import { WatchPage } from "@/components/WatchPage";
 import { tmdb } from "@/lib/tmdb";
 
 const BASE_URL = "https://cimaly.cc";
+const REMOVED_TV_IDS = new Set(["259453", "58841"]);
 
 export const Route = createFileRoute("/watch/tv/$id/$season/$episode")({
   loader: async ({ params }) => {
-    if (!/^\d+$/.test(params.id)) throw notFound();
+    if (!/^\d+$/.test(params.id) || REMOVED_TV_IDS.has(params.id)) throw notFound();
     const season = Number(params.season);
     const episode = Number(params.episode);
     if (!Number.isInteger(season) || season < 1 || !Number.isInteger(episode) || episode < 1) throw notFound();

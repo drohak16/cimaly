@@ -4,7 +4,7 @@ import { IMG, tmdb } from "@/lib/tmdb";
 import { jsonLd } from "@/lib/seo";
 import { mediaSeoMeta } from "@/lib/seo-metadata";
 
-const REMOVED_TV_IDS = new Set(["103815", "114655"]);
+const REMOVED_TV_IDS = new Set(["103815", "114655", "259453", "58841"]);
 
 export const Route = createFileRoute("/tv/$id")({
   loader: async ({ params }) => {

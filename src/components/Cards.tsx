@@ -22,8 +22,8 @@ export type Media = {
   overview?: string;
 };
 
-const REMOVED_MOVIE_IDS = new Set([5038]);
-const REMOVED_TV_IDS = new Set([259453, 58841]);
+const REMOVED_MOVIE_IDS = new Set([823482, 49021, 5038]);
+const REMOVED_TV_IDS = new Set([103815, 114655, 259453, 58841]);
 export const isReportedMedia = (item: Media, type?: "movie" | "tv") =>
   (kindOf(item, type) === "tv" ? REMOVED_TV_IDS : REMOVED_MOVIE_IDS).has(item.id);
 

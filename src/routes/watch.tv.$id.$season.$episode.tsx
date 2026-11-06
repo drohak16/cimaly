@@ -3,7 +3,7 @@ import { WatchPage } from "@/components/WatchPage";
 import { tmdb } from "@/lib/tmdb";
 
 const BASE_URL = "https://cimaly.cc";
-const REMOVED_TV_IDS = new Set(["259453", "58841"]);
+const REMOVED_TV_IDS = new Set(["103815", "114655", "259453", "58841"]);
 
 export const Route = createFileRoute("/watch/tv/$id/$season/$episode")({
   loader: async ({ params }) => {

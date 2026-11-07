@@ -60,7 +60,8 @@ async function probe(target) {
     });
     // Read response so late SSR errors are not silently missed.
     const html = await response.text();
-    const fallback500 = html.includes("<title>This page didn't load</title>");
+    const fallback500 = html.includes("<title>This page didn't load</title>") ||
+      /<h1\b[^>]*>\s*This page didn't load\s*<\/h1>/i.test(html);
     const wrongRedirect = target.group === "www-redirect" &&
       !response.url.startsWith("https://cimaly.cc/");
     const status = fallback500 && response.ok ? 500 : response.status;
